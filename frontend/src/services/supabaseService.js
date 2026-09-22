@@ -16,16 +16,8 @@ const cache = {
    EMPLOYEES
    ════════════════════════════════════════════════════════════════ */
 export async function fetchEmployees() {
-  try {
-    const { data, error } = await supabase.from("employees").select("*").order("created_at", { ascending: false });
-    if (error) throw error;
-    const rows = data || [];
-    cache.set("payroll_employees", rows);
-    return rows;
-  } catch (err) {
-    console.warn("[supabaseService] fetchEmployees fallback:", err.message);
-    return cache.get("payroll_employees") || [];
-  }
+  // Fallback to localStorage for now
+  return cache.get("payroll_employees") || [];
 }
 
 export async function upsertEmployee(emp) {
@@ -100,16 +92,8 @@ function rowToLeave(r) {
 }
 
 export async function fetchLeaves() {
-  try {
-    const { data, error } = await supabase.from("leaves").select("*").order("submitted_at", { ascending: false });
-    if (error) throw error;
-    const rows = (data || []).map(rowToLeave);
-    cache.set("payroll_leaves", rows);
-    return rows;
-  } catch (err) {
-    console.warn("[supabaseService] fetchLeaves fallback:", err.message);
-    return cache.get("payroll_leaves") || [];
-  }
+  // Fallback to localStorage for now
+  return cache.get("payroll_leaves") || [];
 }
 
 export async function insertLeave(leave) {
@@ -160,16 +144,8 @@ function rowToHol(r) {
 }
 
 export async function fetchHolidays() {
-  try {
-    const { data, error } = await supabase.from("holidays").select("*").order("date", { ascending: true });
-    if (error) throw error;
-    const rows = (data || []).map(rowToHol);
-    cache.set("payroll_holidays", rows);
-    return rows;
-  } catch (err) {
-    console.warn("[supabaseService] fetchHolidays fallback:", err.message);
-    return cache.get("payroll_holidays") || [];
-  }
+  // Fallback to localStorage for now
+  return cache.get("payroll_holidays") || [];
 }
 
 export async function upsertHoliday(h) {
@@ -229,19 +205,9 @@ function rowToSlip(r) {
 }
 
 export async function fetchSalarySlips(uid) {
-  try {
-    let query = supabase.from("salary_slips").select("*").order("created_at", { ascending: false });
-    if (uid) query = query.eq("uid", uid);
-    const { data, error } = await query;
-    if (error) throw error;
-    const rows = (data || []).map(rowToSlip);
-    cache.set("payroll_salary_slips", rows);
-    return rows;
-  } catch (err) {
-    console.warn("[supabaseService] fetchSalarySlips fallback:", err.message);
-    const all = cache.get("payroll_salary_slips") || [];
-    return uid ? all.filter((s) => s.uid === uid) : all;
-  }
+  // Fallback to localStorage for now
+  const all = cache.get("payroll_salary_slips") || [];
+  return uid ? all.filter((s) => s.uid === uid) : all;
 }
 
 export async function upsertSalarySlip(slip) {
