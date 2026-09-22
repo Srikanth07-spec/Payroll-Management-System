@@ -1,31 +1,48 @@
 /**
  * migrateToSupabase.js
- * One-time script to export localStorage data and insert into Supabase
- * Run this once in browser console on localhost to populate Supabase
+ * Complete migration: export localStorage → Supabase
+ * Run: window.exportAllData() to see what will be migrated
+ * Run: window.migrateDataToSupabase() to actually migrate
  */
 import { supabase } from "../lib/supabase";
 
+export async function exportAllData() {
+  const keys = Object.keys(localStorage);
+  const data = {};
+  keys.forEach(k => {
+    data[k] = localStorage.getItem(k);
+  });
+  console.log("📊 ALL LOCALSTORAGE DATA:", data);
+  copy(JSON.stringify(data, null, 2));
+  alert(`Exported ${keys.length} items to clipboard!`);
+  return data;
+}
+
 export async function migrateDataToSupabase() {
   try {
-    console.log("🔄 Starting migration...");
+    console.log("🔄 Starting comprehensive migration...");
 
-    // Get data from localStorage
+    // Get ALL localStorage data
     const employees = JSON.parse(localStorage.getItem("payroll_employees") || "[]");
     const leaves = JSON.parse(localStorage.getItem("payroll_leaves") || "[]");
     const holidays = JSON.parse(localStorage.getItem("payroll_holidays") || "[]");
     const salary_slips = JSON.parse(localStorage.getItem("payroll_salary_slips") || "[]");
     const chat_messages = JSON.parse(localStorage.getItem("payroll_chat_messages") || "[]");
     const announcements = JSON.parse(localStorage.getItem("payroll_announcements") || "[]");
+    const attendance = JSON.parse(localStorage.getItem("payroll_attendance") || "[]");
 
-    // Migrate employees
+    // Migrate employees (including profile pics/images)
     if (employees.length > 0) {
       console.log(`📥 Migrating ${employees.length} employees...`);
       const { error: empErr } = await supabase.from("employees").upsert(employees, { onConflict: "uid" });
-      if (empErr) throw new Error(`Employees: ${empErr.message}`);
+      if (empErr) {
+        console.error("Employee error:", empErr);
+        throw new Error(`Employees: ${empErr.message}`);
+      }
       console.log("✅ Employees migrated");
     }
 
-    // Migrate leaves (convert format)
+    // Migrate leaves
     if (leaves.length > 0) {
       console.log(`📥 Migrating ${leaves.length} leaves...`);
       const leaveRows = leaves.map((l) => ({
@@ -56,7 +73,7 @@ export async function migrateDataToSupabase() {
       console.log("✅ Holidays migrated");
     }
 
-    // Migrate salary slips (convert format)
+    // Migrate salary slips
     if (salary_slips.length > 0) {
       console.log(`📥 Migrating ${salary_slips.length} salary slips...`);
       const slipRows = salary_slips.map((s) => ({
@@ -98,17 +115,32 @@ export async function migrateDataToSupabase() {
       console.log("✅ Announcements migrated");
     }
 
-    console.log("✅ ✅ ✅ MIGRATION COMPLETE! All data is now in Supabase.");
-    console.log("Employees:", employees.length);
-    console.log("Leaves:", leaves.length);
-    console.log("Holidays:", holidays.length);
-    console.log("Salary slips:", salary_slips.length);
-    console.log("Chat messages:", chat_messages.length);
-    console.log("Announcements:", announcements.length);
+    // Migrate attendance
+    if (attendance.length > 0) {
+      console.log(`📥 Migrating ${attendance.length} attendance records...`);
+      const { error: attErr } = await supabase.from("attendance").upsert(attendance, { onConflict: "id" });
+      if (attErr) throw new Error(`Attendance: ${attErr.message}`);
+      console.log("✅ Attendance records migrated");
+    }
+
+    console.log("✅ ✅ ✅ MIGRATION COMPLETE!");
+    console.log(`
+📊 Summary:
+  • Employees: ${employees.length}
+  • Leaves: ${leaves.length}
+  • Holidays: ${holidays.length}
+  • Salary slips: ${salary_slips.length}
+  • Chat messages: ${chat_messages.length}
+  • Announcements: ${announcements.length}
+  • Attendance: ${attendance.length}
+    `);
+    alert("✅ Migration complete! Refresh Vercel to see data.");
   } catch (err) {
     console.error("❌ Migration failed:", err.message);
+    alert(`❌ Migration error: ${err.message}`);
   }
 }
 
-// Export for manual calling in console
+// Expose to window
+window.exportAllData = exportAllData;
 window.migrateDataToSupabase = migrateDataToSupabase;
