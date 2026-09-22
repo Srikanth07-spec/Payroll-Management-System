@@ -34,7 +34,7 @@ export async function migrateDataToSupabase() {
     // Migrate employees (including profile pics/images)
     if (employees.length > 0) {
       console.log(`📥 Migrating ${employees.length} employees...`);
-      const { error: empErr } = await supabase.from("employees").upsert(employees, { onConflict: "uid" });
+      const { error: empErr } = await supabase.from("employees").insert(employees);
       if (empErr) {
         console.error("Employee error:", empErr);
         throw new Error(`Employees: ${empErr.message}`);
@@ -60,7 +60,7 @@ export async function migrateDataToSupabase() {
         submitted_at: l.submittedAt,
         reviewed_at: l.reviewedAt,
       }));
-      const { error: lvErr } = await supabase.from("leaves").upsert(leaveRows, { onConflict: "id" });
+      const { error: lvErr } = await supabase.from("leaves").insert(leaveRows);
       if (lvErr) throw new Error(`Leaves: ${lvErr.message}`);
       console.log("✅ Leaves migrated");
     }
@@ -68,7 +68,7 @@ export async function migrateDataToSupabase() {
     // Migrate holidays
     if (holidays.length > 0) {
       console.log(`📥 Migrating ${holidays.length} holidays...`);
-      const { error: holErr } = await supabase.from("holidays").upsert(holidays, { onConflict: "id" });
+      const { error: holErr } = await supabase.from("holidays").insert(holidays);
       if (holErr) throw new Error(`Holidays: ${holErr.message}`);
       console.log("✅ Holidays migrated");
     }
@@ -94,7 +94,7 @@ export async function migrateDataToSupabase() {
         net: s.net,
         created_at: s.createdAt,
       }));
-      const { error: slipErr } = await supabase.from("salary_slips").upsert(slipRows, { onConflict: "id" });
+      const { error: slipErr } = await supabase.from("salary_slips").insert(slipRows);
       if (slipErr) throw new Error(`Salary slips: ${slipErr.message}`);
       console.log("✅ Salary slips migrated");
     }
@@ -102,7 +102,7 @@ export async function migrateDataToSupabase() {
     // Migrate chat messages
     if (chat_messages.length > 0) {
       console.log(`📥 Migrating ${chat_messages.length} chat messages...`);
-      const { error: chatErr } = await supabase.from("chat_messages").upsert(chat_messages, { onConflict: "id" });
+      const { error: chatErr } = await supabase.from("chat_messages").insert(chat_messages);
       if (chatErr) throw new Error(`Chat messages: ${chatErr.message}`);
       console.log("✅ Chat messages migrated");
     }
@@ -110,7 +110,7 @@ export async function migrateDataToSupabase() {
     // Migrate announcements
     if (announcements.length > 0) {
       console.log(`📥 Migrating ${announcements.length} announcements...`);
-      const { error: annErr } = await supabase.from("announcements").upsert(announcements, { onConflict: "id" });
+      const { error: annErr } = await supabase.from("announcements").insert(announcements);
       if (annErr) throw new Error(`Announcements: ${annErr.message}`);
       console.log("✅ Announcements migrated");
     }
@@ -118,7 +118,7 @@ export async function migrateDataToSupabase() {
     // Migrate attendance
     if (attendance.length > 0) {
       console.log(`📥 Migrating ${attendance.length} attendance records...`);
-      const { error: attErr } = await supabase.from("attendance").upsert(attendance, { onConflict: "id" });
+      const { error: attErr } = await supabase.from("attendance").insert(attendance);
       if (attErr) throw new Error(`Attendance: ${attErr.message}`);
       console.log("✅ Attendance records migrated");
     }
