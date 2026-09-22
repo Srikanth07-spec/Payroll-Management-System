@@ -1,176 +1,121 @@
 /**
  * migrateToSupabase.js
- * Complete migration: export localStorage → Supabase
- * Run: window.exportAllData() to see what will be migrated
- * Run: window.migrateDataToSupabase() to actually migrate
+ * One-time migration: localStorage → Supabase
+ * Run in browser console: migrateDataToSupabase()
  */
-import { supabase } from "../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
-export async function exportAllData() {
-  const keys = Object.keys(localStorage);
-  const data = {};
-  keys.forEach(k => {
-    data[k] = localStorage.getItem(k);
-  });
-  console.log("📊 ALL LOCALSTORAGE DATA:", data);
-  copy(JSON.stringify(data, null, 2));
-  alert(`Exported ${keys.length} items to clipboard!`);
-  return data;
-}
+const supabaseDirect = createClient(
+  "https://kipiktutebzswskkobvx.supabase.co",
+  "sb_publishable_qCXF9Shv5QvRpJFlBNgwkg_se5BRFEy"
+);
 
 export async function migrateDataToSupabase() {
   try {
-    console.log("🔄 Starting comprehensive migration...");
+    console.log("🔄 Starting migration...");
 
-    // Get ALL localStorage data
-    const employees = JSON.parse(localStorage.getItem("payroll_employees") || "[]");
-    const leaves = JSON.parse(localStorage.getItem("payroll_leaves") || "[]");
-    const holidays = JSON.parse(localStorage.getItem("payroll_holidays") || "[]");
-    const salary_slips = JSON.parse(localStorage.getItem("payroll_salary_slips") || "[]");
+    const employees     = JSON.parse(localStorage.getItem("payroll_employees")     || "[]");
+    const leaves        = JSON.parse(localStorage.getItem("payroll_leaves")        || "[]");
+    const holidays      = JSON.parse(localStorage.getItem("payroll_holidays")      || "[]");
+    const salary_slips  = JSON.parse(localStorage.getItem("payroll_salary_slips")  || "[]");
     const chat_messages = JSON.parse(localStorage.getItem("payroll_chat_messages") || "[]");
     const announcements = JSON.parse(localStorage.getItem("payroll_announcements") || "[]");
-    const attendance = JSON.parse(localStorage.getItem("payroll_attendance") || "[]");
+    const attendance    = JSON.parse(localStorage.getItem("payroll_attendance")    || "[]");
 
-    // Migrate employees (only send valid columns)
+    // ── Employees ──
     if (employees.length > 0) {
-      console.log(`📥 Migrating ${employees.length} employees...`);
-      // Only send columns that Supabase expects
-      const empRows = employees.map(e => ({
-        uid: e.uid,
-        name: e.name,
-        email: e.email,
-        username: e.username,
-        department: e.department,
-        designation: e.designation,
-        shift: e.shift,
-        employmentType: e.employmentType,
-        branch: e.branch,
-        joiningDate: e.joiningDate,
-        bloodGroup: e.bloodGroup,
-        phone: e.phone,
-        mobile: e.mobile,
-        address: e.address,
-        employeeId: e.employeeId,
-        reportingManager: e.reportingManager,
-        status: e.status,
-        profilePic: e.profilePic,
-        profileImage: e.profileImage,
-        isAdmin: e.isAdmin,
-        role: e.role,
+      console.log(`📥 ${employees.length} employees...`);
+      const rows = employees.filter(e => e.uid).map(e => ({
+        uid: e.uid, name: e.name, email: e.email, username: e.username,
+        department: e.department, designation: e.designation, shift: e.shift,
+        employmentType: e.employmentType, branch: e.branch, joiningDate: e.joiningDate,
+        bloodGroup: e.bloodGroup, phone: e.phone, mobile: e.mobile, address: e.address,
+        employeeId: e.employeeId, reportingManager: e.reportingManager, status: e.status,
+        profilePic: e.profilePic, profileImage: e.profileImage,
+        isAdmin: e.isAdmin, role: e.role,
         created_at: e.created_at || new Date().toISOString(),
-      })).filter(e => e.uid); // Only records with uid
-
-      if (empRows.length === 0) {
-        console.warn("⚠️  No valid employees to migrate (all missing uid)");
-      } else {
-        const { error: empErr } = await supabase.from("employees").insert(empRows);
-        if (empErr) {
-          console.error("Employee error:", empErr);
-          throw new Error(`Employees: ${empErr.message}`);
-        }
-        console.log("✅ Employees migrated");
-      }
+      }));
+      await supabaseDirect.from("employees").delete().neq("uid","__none__");
+      const { error } = await supabaseDirect.from("employees").insert(rows);
+      if (error) throw new Error(`Employees: ${error.message}`);
+      console.log("✅ Employees done");
     }
 
-    // Migrate leaves
+    // ── Leaves ──
     if (leaves.length > 0) {
-      console.log(`📥 Migrating ${leaves.length} leaves...`);
-      const leaveRows = leaves.map((l) => ({
-        id: l.id,
-        employee: l.employee,
+      console.log(`📥 ${leaves.length} leaves...`);
+      const rows = leaves.map(l => ({
+        id: l.id, employee: l.employee,
         employee_email: l.employeeEmail,
         employee_uid: l.employeeUid || l.uid,
         employee_id: l.employeeId,
-        type: l.type,
-        from_date: l.from,
-        to_date: l.to,
-        reason: l.reason,
-        status: l.status,
+        type: l.type, from_date: l.from, to_date: l.to,
+        reason: l.reason, status: l.status,
         admin_note: l.adminNote || "",
         submitted_at: l.submittedAt,
-        reviewed_at: l.reviewedAt,
+        reviewed_at: l.reviewedAt || null,
       }));
-      const { error: lvErr } = await supabase.from("leaves").insert(leaveRows);
-      if (lvErr) throw new Error(`Leaves: ${lvErr.message}`);
-      console.log("✅ Leaves migrated");
+      await supabaseDirect.from("leaves").delete().neq("id", 0);
+      const { error } = await supabaseDirect.from("leaves").insert(rows);
+      if (error) throw new Error(`Leaves: ${error.message}`);
+      console.log("✅ Leaves done");
     }
 
-    // Migrate holidays
+    // ── Holidays ──
     if (holidays.length > 0) {
-      console.log(`📥 Migrating ${holidays.length} holidays...`);
-      const { error: holErr } = await supabase.from("holidays").insert(holidays);
-      if (holErr) throw new Error(`Holidays: ${holErr.message}`);
-      console.log("✅ Holidays migrated");
+      console.log(`📥 ${holidays.length} holidays...`);
+      await supabaseDirect.from("holidays").delete().neq("id", 0);
+      const { error } = await supabaseDirect.from("holidays").insert(
+        holidays.map(h => ({ id: h.id, name: h.name, date: h.date, day: h.day, type: h.type }))
+      );
+      if (error) throw new Error(`Holidays: ${error.message}`);
+      console.log("✅ Holidays done");
     }
 
-    // Migrate salary slips
+    // ── Salary Slips ──
     if (salary_slips.length > 0) {
-      console.log(`📥 Migrating ${salary_slips.length} salary slips...`);
-      const slipRows = salary_slips.map((s) => ({
-        id: s.id,
-        uid: s.uid,
-        employee: s.employee,
-        username: s.username,
-        employee_id: s.employeeId,
-        department: s.department,
-        designation: s.designation,
-        employment_type: s.employmentType,
-        month: s.month,
-        year: s.year,
-        basic: s.basic,
-        allowances: s.allowances,
-        deductions: s.deductions,
-        gross: s.gross,
-        net: s.net,
-        created_at: s.createdAt,
+      console.log(`📥 ${salary_slips.length} salary slips...`);
+      const rows = salary_slips.map(s => ({
+        id: s.id, uid: s.uid, employee: s.employee, username: s.username,
+        employee_id: s.employeeId, department: s.department,
+        designation: s.designation, employment_type: s.employmentType,
+        month: s.month, year: s.year, basic: s.basic,
+        allowances: s.allowances, deductions: s.deductions,
+        gross: s.gross, net: s.net, created_at: s.createdAt,
       }));
-      const { error: slipErr } = await supabase.from("salary_slips").insert(slipRows);
-      if (slipErr) throw new Error(`Salary slips: ${slipErr.message}`);
-      console.log("✅ Salary slips migrated");
+      await supabaseDirect.from("salary_slips").delete().neq("id", 0);
+      const { error } = await supabaseDirect.from("salary_slips").insert(rows);
+      if (error) throw new Error(`Salary slips: ${error.message}`);
+      console.log("✅ Salary slips done");
     }
 
-    // Migrate chat messages
-    if (chat_messages.length > 0) {
-      console.log(`📥 Migrating ${chat_messages.length} chat messages...`);
-      const { error: chatErr } = await supabase.from("chat_messages").insert(chat_messages);
-      if (chatErr) throw new Error(`Chat messages: ${chatErr.message}`);
-      console.log("✅ Chat messages migrated");
-    }
-
-    // Migrate announcements
+    // ── Announcements ──
     if (announcements.length > 0) {
-      console.log(`📥 Migrating ${announcements.length} announcements...`);
-      const { error: annErr } = await supabase.from("announcements").insert(announcements);
-      if (annErr) throw new Error(`Announcements: ${annErr.message}`);
-      console.log("✅ Announcements migrated");
+      console.log(`📥 ${announcements.length} announcements...`);
+      await supabaseDirect.from("announcements").delete().neq("id", 0);
+      const { error } = await supabaseDirect.from("announcements").insert(
+        announcements.map(a => ({ id: a.id, uid: a.uid || null, message: a.message, active: a.active !== false }))
+      );
+      if (error) throw new Error(`Announcements: ${error.message}`);
+      console.log("✅ Announcements done");
     }
 
-    // Migrate attendance
+    // ── Attendance ──
     if (attendance.length > 0) {
-      console.log(`📥 Migrating ${attendance.length} attendance records...`);
-      const { error: attErr } = await supabase.from("attendance").insert(attendance);
-      if (attErr) throw new Error(`Attendance: ${attErr.message}`);
-      console.log("✅ Attendance records migrated");
+      console.log(`📥 ${attendance.length} attendance records...`);
+      await supabaseDirect.from("attendance").delete().neq("id", 0);
+      const { error } = await supabaseDirect.from("attendance").insert(attendance);
+      if (error) throw new Error(`Attendance: ${error.message}`);
+      console.log("✅ Attendance done");
     }
 
-    console.log("✅ ✅ ✅ MIGRATION COMPLETE!");
-    console.log(`
-📊 Summary:
-  • Employees: ${employees.length}
-  • Leaves: ${leaves.length}
-  • Holidays: ${holidays.length}
-  • Salary slips: ${salary_slips.length}
-  • Chat messages: ${chat_messages.length}
-  • Announcements: ${announcements.length}
-  • Attendance: ${attendance.length}
-    `);
-    alert("✅ Migration complete! Refresh Vercel to see data.");
+    console.log("✅✅✅ MIGRATION COMPLETE!");
+    alert(`✅ Migration complete!\n\nEmployees: ${employees.length}\nLeaves: ${leaves.length}\nHolidays: ${holidays.length}\nSalary Slips: ${salary_slips.length}\nAttendance: ${attendance.length}\n\nRefresh Vercel to see your data!`);
+
   } catch (err) {
     console.error("❌ Migration failed:", err.message);
-    alert(`❌ Migration error: ${err.message}`);
+    alert(`❌ Error: ${err.message}`);
   }
 }
 
-// Expose to window
-window.exportAllData = exportAllData;
 window.migrateDataToSupabase = migrateDataToSupabase;
