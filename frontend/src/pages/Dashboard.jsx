@@ -24,7 +24,6 @@ import EmployeeProfile from "./employee/EmployeeProfile";
 import SalarySlip from "./employee/SalarySlip";
 import { getEmployees, getLeaves, loadData, saveData } from "./shared/payrollData";
 import { useTheme } from "../context/ThemeContext.jsx";
-import { fetchEmployees, fetchLeaves, fetchHolidays } from "../services/supabaseService";
 import "./Dashboard.css";
 
 const MAIN_ADMIN_EMAIL = "adminpayroll03@gmail.com";

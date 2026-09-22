@@ -3,7 +3,6 @@ import {
   CalendarDays, CheckCircle2, ChevronDown, Clock3, FileText,
   Search, UserCheck, Users, X, XCircle, AlertTriangle, Building2,
 } from "lucide-react";
-import { updateLeaveStatus } from "../../services/supabaseService";
 import "../LeaveManagement.css";
 
 /* ─────────────────────────────────────────────────────────────

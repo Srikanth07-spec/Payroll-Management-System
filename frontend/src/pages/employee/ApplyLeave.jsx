@@ -271,7 +271,6 @@ export default function ApplyLeave({
     };
 
     setLeaves([...leaves, newLeave]);
-    insertLeave(newLeave).catch(() => {});
 
     setForm({
       type: "Casual Leave",
