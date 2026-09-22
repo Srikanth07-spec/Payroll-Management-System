@@ -31,15 +31,45 @@ export async function migrateDataToSupabase() {
     const announcements = JSON.parse(localStorage.getItem("payroll_announcements") || "[]");
     const attendance = JSON.parse(localStorage.getItem("payroll_attendance") || "[]");
 
-    // Migrate employees (including profile pics/images)
+    // Migrate employees (only send valid columns)
     if (employees.length > 0) {
       console.log(`📥 Migrating ${employees.length} employees...`);
-      const { error: empErr } = await supabase.from("employees").insert(employees);
-      if (empErr) {
-        console.error("Employee error:", empErr);
-        throw new Error(`Employees: ${empErr.message}`);
+      // Only send columns that Supabase expects
+      const empRows = employees.map(e => ({
+        uid: e.uid,
+        name: e.name,
+        email: e.email,
+        username: e.username,
+        department: e.department,
+        designation: e.designation,
+        shift: e.shift,
+        employmentType: e.employmentType,
+        branch: e.branch,
+        joiningDate: e.joiningDate,
+        bloodGroup: e.bloodGroup,
+        phone: e.phone,
+        mobile: e.mobile,
+        address: e.address,
+        employeeId: e.employeeId,
+        reportingManager: e.reportingManager,
+        status: e.status,
+        profilePic: e.profilePic,
+        profileImage: e.profileImage,
+        isAdmin: e.isAdmin,
+        role: e.role,
+        created_at: e.created_at || new Date().toISOString(),
+      })).filter(e => e.uid); // Only records with uid
+
+      if (empRows.length === 0) {
+        console.warn("⚠️  No valid employees to migrate (all missing uid)");
+      } else {
+        const { error: empErr } = await supabase.from("employees").insert(empRows);
+        if (empErr) {
+          console.error("Employee error:", empErr);
+          throw new Error(`Employees: ${empErr.message}`);
+        }
+        console.log("✅ Employees migrated");
       }
-      console.log("✅ Employees migrated");
     }
 
     // Migrate leaves
