@@ -1,18 +1,9 @@
 import { useMemo, useState } from "react";
 import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronDown,
-  Clock3,
-  FileText,
-  Search,
-  UserCheck,
-  Users,
-  X,
-  XCircle,
-  AlertTriangle,
-  Building2,
+  CalendarDays, CheckCircle2, ChevronDown, Clock3, FileText,
+  Search, UserCheck, Users, X, XCircle, AlertTriangle, Building2,
 } from "lucide-react";
+import { updateLeaveStatus } from "../../services/supabaseService";
 import "../LeaveManagement.css";
 
 /* ─────────────────────────────────────────────────────────────
@@ -199,7 +190,7 @@ export default function AdminLeaveApproval({ leaves, setLeaves, employees = [] }
   };
 
   /* ── execute decision ── */
-  const executeDecision = () => {
+  const executeDecision = async () => {
     if (!actionLeave || !actionType) return;
     const updated = leaves.map((l) =>
       l.id === actionLeave.id
@@ -207,6 +198,7 @@ export default function AdminLeaveApproval({ leaves, setLeaves, employees = [] }
         : l
     );
     setLeaves(updated);
+    await updateLeaveStatus(actionLeave.id, actionType, adminNote.trim(), new Date().toISOString()).catch(() => {});
     setActionLeave(null);
     setActionType(null);
     setAdminNote("");

@@ -12,6 +12,7 @@ import {
   Sparkles,
   XCircle,
 } from "lucide-react";
+import { insertLeave } from "../../services/supabaseService";
 import "../LeaveManagement.css";
 
 const LEAVE_TYPES = [
@@ -270,6 +271,7 @@ export default function ApplyLeave({
     };
 
     setLeaves([...leaves, newLeave]);
+    insertLeave(newLeave).catch(() => {});
 
     setForm({
       type: "Casual Leave",

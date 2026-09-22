@@ -24,6 +24,7 @@ import EmployeeProfile from "./employee/EmployeeProfile";
 import SalarySlip from "./employee/SalarySlip";
 import { getEmployees, getLeaves, loadData, saveData } from "./shared/payrollData";
 import { useTheme } from "../context/ThemeContext.jsx";
+import { fetchEmployees, fetchLeaves, fetchHolidays } from "../services/supabaseService";
 import "./Dashboard.css";
 
 const MAIN_ADMIN_EMAIL = "adminpayroll03@gmail.com";
@@ -625,8 +626,25 @@ export default function Dashboard() {
   const [holidays,    setHolidays]    = useState(() => loadData("payroll_holidays", defaultHolidays));
 
   useEffect(() =>
-    onAuthStateChanged(auth, (u) => {
+    onAuthStateChanged(auth, async (u) => {
       setCurrentUser(u); setLoading(false); setPage("home");
+
+      if (u) {
+        // Load all data from Supabase on login
+        try {
+          const [emps, lvs, hols] = await Promise.all([
+            fetchEmployees(),
+            fetchLeaves(),
+            fetchHolidays(),
+          ]);
+          if (emps.length > 0) setEmployees(emps);
+          if (lvs.length  > 0) setLeaves(lvs);
+          if (hols.length > 0) setHolidays(hols);
+        } catch (err) {
+          console.warn("Supabase load failed, using localStorage cache", err.message);
+        }
+      }
+
       if (u && norm(u.email) !== norm(MAIN_ADMIN_EMAIL) && !resolveIsAdmin(u)) {
         const sk = `payroll_active_session_${u.uid}`;
         if (!localStorage.getItem(sk)) {

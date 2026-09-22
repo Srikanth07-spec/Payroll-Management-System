@@ -17,6 +17,7 @@ import {
   Camera,
 } from "lucide-react";
 import { createEmployeeFirebaseAccount } from "../../lib/employeeAuth";
+import { upsertEmployee, deleteEmployee as deleteEmployeeFromDB } from "../../services/supabaseService";
 import "./Employees.css";
 
 /* ──────────────────────────────────────────────────────────────
@@ -474,6 +475,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
 
       const updated = [...employees, newEmp];
       syncAndClose(updated);
+      await upsertEmployee(newEmp);
       setShowAddModal(false);
       setForm({});
       showToast("Employee account created successfully.");
@@ -512,7 +514,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
   };
 
   /* ── SAVE EDIT ── */
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!selectedEmployee) return;
     const { fullName, email, employeeId, department, designation,
       branch, shift, employmentType } = form;
@@ -566,6 +568,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
     });
 
     syncAndClose(updated);
+    await upsertEmployee(updated.find((e) => e.uid === (selectedEmployee.uid || norm(selectedEmployee.email))) || {});
     setShowEditModal(false);
     setSelectedEmployee(null);
     setForm({});
@@ -579,7 +582,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
   const openDelete = (emp) => { setSelectedEmployee(emp); setShowDeleteModal(true); };
   const closeDelete = () => { setShowDeleteModal(false); setSelectedEmployee(null); };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!selectedEmployee) return;
     const selUid = selectedEmployee.uid;
     const selEmail = norm(selectedEmployee.email);
@@ -598,6 +601,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
     localStorage.setItem("payroll_attendance", JSON.stringify(attUpdated));
 
     syncAndClose(updated);
+    await deleteEmployeeFromDB(selUid);
     closeDelete();
     showToast(`${empName(selectedEmployee)} was permanently deleted.`);
   };
