@@ -387,7 +387,14 @@ export async function fetchBranches() {
 }
 export async function upsertBranch(row) {
   try {
-    const { data, error } = await supabase.from("branches").upsert([row], { onConflict: "id" }).select().single();
+    let data, error;
+    if (row.id) {
+      // existing — update
+      ({ data, error } = await supabase.from("branches").update(row).eq("id", row.id).select().single());
+    } else {
+      // new — insert
+      ({ data, error } = await supabase.from("branches").insert([row]).select().single());
+    }
     if (error) throw error;
     return data;
   } catch (err) {
@@ -420,7 +427,12 @@ export async function fetchDepartments() {
 }
 export async function upsertDepartment(row) {
   try {
-    const { data, error } = await supabase.from("departments").upsert([row], { onConflict: "id" }).select().single();
+    let data, error;
+    if (row.id) {
+      ({ data, error } = await supabase.from("departments").update(row).eq("id", row.id).select().single());
+    } else {
+      ({ data, error } = await supabase.from("departments").insert([row]).select().single());
+    }
     if (error) throw error;
     return data;
   } catch (err) {
@@ -456,7 +468,12 @@ export async function fetchDesignations(department) {
 }
 export async function upsertDesignation(row) {
   try {
-    const { data, error } = await supabase.from("designations").upsert([row], { onConflict: "id" }).select().single();
+    let data, error;
+    if (row.id) {
+      ({ data, error } = await supabase.from("designations").update(row).eq("id", row.id).select().single());
+    } else {
+      ({ data, error } = await supabase.from("designations").insert([row]).select().single());
+    }
     if (error) throw error;
     return data;
   } catch (err) {
@@ -489,7 +506,12 @@ export async function fetchShifts() {
 }
 export async function upsertShift(row) {
   try {
-    const { data, error } = await supabase.from("shifts").upsert([row], { onConflict: "id" }).select().single();
+    let data, error;
+    if (row.id) {
+      ({ data, error } = await supabase.from("shifts").update(row).eq("id", row.id).select().single());
+    } else {
+      ({ data, error } = await supabase.from("shifts").insert([row]).select().single());
+    }
     if (error) throw error;
     return data;
   } catch (err) {
