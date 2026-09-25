@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownToLine, Building2, Printer, WalletCards } from "lucide-react";
+import { ArrowDownToLine, Printer, WalletCards } from "lucide-react";
 import { fetchSalarySlips } from "../../services/supabaseService";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
-/* ─── print styles injected once ──────────────────────────────── */
+/* ─── Print styles ─────────────────────────────────────────────── */
 const PRINT_STYLE = `
 @media print {
   body > *:not(#payslip-print-root) { display: none !important; }
@@ -22,10 +24,11 @@ function ensurePrintStyle() {
 /* ─── Single Payslip ──────────────────────────────────────────── */
 function PayslipCard({ slip }) {
   const ref = useRef(null);
+  const [downloading, setDownloading] = useState(false);
 
+  /* PRINT — opens browser print dialog */
   const handlePrint = () => {
     ensurePrintStyle();
-    /* Clone slip into an isolated root so only it prints */
     const root = document.getElementById("payslip-print-root") || document.createElement("div");
     root.id = "payslip-print-root";
     root.style.cssText = "display:none;position:fixed;inset:0;background:white;z-index:99999;overflow:auto;padding:20px;";
@@ -34,6 +37,24 @@ function PayslipCard({ slip }) {
     root.style.display = "block";
     window.print();
     setTimeout(() => { root.style.display = "none"; }, 500);
+  };
+
+  /* DOWNLOAD — generates PDF directly without print dialog */
+  const handleDownload = async () => {
+    if (!ref.current || downloading) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(ref.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfWidth  = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`PaySlip_${slip.employee || "Employee"}_${slip.month}_${slip.year}.pdf`);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+    }
+    setDownloading(false);
   };
 
   const rows = [
@@ -45,15 +66,15 @@ function PayslipCard({ slip }) {
 
   return (
     <div style={{ marginBottom: 28 }}>
-      {/* Action buttons outside the print area */}
+      {/* Action buttons */}
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 10 }}>
         <button onClick={handlePrint}
           style={{ display: "flex", alignItems: "center", gap: 7, border: "1px solid #e2e8f0", background: "white", color: "#475569", borderRadius: 10, padding: "9px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-          <Printer size={15} /> Print
+          <Printer size={15} /> Print Payslip
         </button>
-        <button onClick={handlePrint}
-          style={{ display: "flex", alignItems: "center", gap: 7, border: 0, background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "white", borderRadius: 10, padding: "9px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-          <ArrowDownToLine size={15} /> Download PDF
+        <button onClick={handleDownload} disabled={downloading}
+          style={{ display: "flex", alignItems: "center", gap: 7, border: 0, background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "white", borderRadius: 10, padding: "9px 16px", fontWeight: 700, fontSize: 13, cursor: downloading ? "not-allowed" : "pointer", opacity: downloading ? 0.7 : 1 }}>
+          <ArrowDownToLine size={15} /> {downloading ? "Generating…" : "Download PDF"}
         </button>
       </div>
 

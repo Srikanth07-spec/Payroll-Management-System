@@ -446,7 +446,7 @@ export default function Employees({ employees: employeesFromParent = [], setEmpl
             <thead>
               <tr>
                 <th>Employee</th><th>Employee ID</th><th>Branch</th><th>Department</th>
-                <th>Designation</th><th>Shift</th><th>Type</th><th>Status</th><th>Actions</th>
+                <th>Designation</th><th>Shift</th><th>Type</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -470,7 +470,6 @@ export default function Employees({ employees: employeesFromParent = [], setEmpl
                     <td>{emp.designation || "—"}</td>
                     <td>{emp.shift       || "—"}</td>
                     <td>{emp.employmentType || "—"}</td>
-                    <td><span className={`employee-status ${emp.status === "Inactive" ? "inactive" : "active"}`}><i />{emp.status || "Active"}</span></td>
                     <td>
                       <div className="employee-actions">
                         <button type="button" className="action-view"   title="View"   onClick={() => openView(emp)}><Eye size={16} /></button>
