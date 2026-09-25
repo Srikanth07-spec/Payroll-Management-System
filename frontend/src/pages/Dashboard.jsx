@@ -308,13 +308,21 @@ function Holidays({ holidays, setHolidays, isAdmin }) {
 }
 
 /* ── Chat ── */
-function ChatPage({ isAdmin, currentUser, employees = [] }) {
+function ChatPage({ isAdmin, currentUser, employees = [], selectedEmp, setSelectedEmp, adminMsgMap, setAdminMsgMap, myMsgs, setMyMsgs }) {
   const empName = currentUser?.displayName || currentUser?.email?.split("@")[0] || "Employee";
-  const [selectedEmp,  setSelectedEmp]  = useState(null);
-  const [adminMsgs,    setAdminMsgs]    = useState([]);
+
+  // Admin messages for currently selected employee
+  const adminMsgs    = selectedEmp ? (adminMsgMap[selectedEmp.uid] || []) : [];
+  const setAdminMsgs = (updater) => {
+    if (!selectedEmp) return;
+    setAdminMsgMap((prev) => ({
+      ...prev,
+      [selectedEmp.uid]: typeof updater === "function" ? updater(prev[selectedEmp.uid] || []) : updater,
+    }));
+  };
+
   const [adminLoading, setAdminLoading] = useState(false);
-  const [myMsgs,    setMyMsgs]    = useState([]);
-  const [myLoading, setMyLoading] = useState(false);
+  const [myLoading,    setMyLoading]    = useState(false);
   const [tab,    setTab]    = useState("chat");
   const [reqType,setReqType]= useState("Leave Extension");
   const [reqBody,setReqBody]= useState("");
@@ -333,36 +341,71 @@ function ChatPage({ isAdmin, currentUser, employees = [] }) {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [adminMsgs, myMsgs]);
 
+  // Load admin conversation for selected employee (only if not already loaded)
   useEffect(() => {
     if (!isAdmin || !selectedEmp) return;
+    if (adminMsgMap[selectedEmp.uid]) return; // already cached, don't re-fetch
     setAdminLoading(true);
     supabase.from("chat_messages").select("*")
       .or(`recipient_uid.eq.${selectedEmp.uid},and(role.eq.employee,email.eq.${selectedEmp.email})`)
       .order("created_at", { ascending: true })
-      .then(({ data }) => { setAdminMsgs(data || []); setAdminLoading(false); });
+      .then(({ data, error }) => {
+        if (!error) setAdminMsgs(data || []);
+        setAdminLoading(false);
+      });
   }, [isAdmin, selectedEmp?.uid]);
 
+  // Load employee's own messages (only once on mount)
   useEffect(() => {
-    if (isAdmin || !currentUser?.uid) return;
+    if (isAdmin || !currentUser?.uid || myMsgs.length > 0) return;
     setMyLoading(true);
     supabase.from("chat_messages").select("*")
       .or(`recipient_uid.eq.${currentUser.uid},and(role.eq.employee,email.eq.${currentUser.email})`)
       .order("created_at", { ascending: true })
-      .then(({ data }) => { setMyMsgs(data || []); setMyLoading(false); });
+      .then(({ data, error }) => {
+        if (!error) setMyMsgs(data || []);
+        setMyLoading(false);
+      });
   }, [isAdmin, currentUser?.uid]);
 
   const send = async () => {
     if (!text.trim()) return;
-    const msg = { id: Date.now(), sender: isAdmin?"Admin":empName, email: currentUser?.email, role: isAdmin?"admin":"employee", message: text.trim(), recipient_uid: isAdmin ? selectedEmp?.uid : null, is_request: false, created_at: new Date().toISOString() };
+    const msg = {
+      id: Date.now(),
+      sender: isAdmin ? "Admin" : empName,
+      email: currentUser?.email,
+      role: isAdmin ? "admin" : "employee",
+      message: text.trim(),
+      recipient_uid: isAdmin ? selectedEmp?.uid : null,
+      is_request: false,
+      created_at: new Date().toISOString(),
+    };
     setText("");
-    if (isAdmin) setAdminMsgs((p) => [...p, msg]); else setMyMsgs((p) => [...p, msg]);
-    sendPrivateMessage({ ...msg, recipientUid: msg.recipient_uid }).catch(console.warn);
+    if (isAdmin) setAdminMsgs((p) => [...p, msg]);
+    else setMyMsgs((p) => [...p, msg]);
+
+    // Save to Supabase permanently
+    sendPrivateMessage({ ...msg, recipientUid: msg.recipient_uid })
+      .catch((err) => console.warn("Chat save failed:", err.message));
   };
+
   const sendReq = async () => {
     if (!reqBody.trim()) return;
-    const msg = { id: Date.now(), sender: empName, email: currentUser?.email, role:"employee", message:`📋 REQUEST\nType: ${reqType}\n\n${reqBody.trim()}`, is_request:true, request_type:reqType, recipient_uid:null, created_at: new Date().toISOString() };
-    setMyMsgs((p) => [...p, msg]); setReqBody(""); setTab("chat");
-    sendPrivateMessage({ ...msg, recipientUid: null }).catch(console.warn);
+    const msg = {
+      id: Date.now(),
+      sender: empName,
+      email: currentUser?.email,
+      role: "employee",
+      message: `📋 REQUEST\nType: ${reqType}\n\n${reqBody.trim()}`,
+      is_request: true,
+      request_type: reqType,
+      recipient_uid: null,
+      created_at: new Date().toISOString(),
+    };
+    setMyMsgs((p) => [...p, msg]);
+    setReqBody(""); setTab("chat");
+    sendPrivateMessage({ ...msg, recipientUid: null })
+      .catch((err) => console.warn("Request save failed:", err.message));
   };
 
   if (isAdmin) {
@@ -374,24 +417,28 @@ function ChatPage({ isAdmin, currentUser, employees = [] }) {
           <div style={{ background:"white", border:"1px solid #e2e8f0", borderRadius:14, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:"12px 14px", borderBottom:"1px solid #f1f5f9", fontWeight:700, fontSize:13, color:"#475569" }}>Employees ({empList.length})</div>
             <div style={{ overflowY:"auto", flex:1 }}>
-              {empList.length === 0 ? <div style={{ padding:20, color:"#94a3b8", fontSize:12, textAlign:"center" }}>No employees</div>
+              {empList.length === 0
+                ? <div style={{ padding:20, color:"#94a3b8", fontSize:12, textAlign:"center" }}>No employees</div>
                 : empList.map((emp) => (
-                <button key={emp.uid} onClick={() => setSelectedEmp(emp)}
-                  style={{ width:"100%", padding:"12px 14px", border:0, borderBottom:"1px solid #f8fafc", background: selectedEmp?.uid===emp.uid?"#eef2ff":"white", cursor:"pointer", textAlign:"left", display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ width:34, height:34, borderRadius:10, background:"#eef2ff", color:"#4f46e5", display:"grid", placeItems:"center", fontWeight:800, fontSize:14, flexShrink:0, overflow:"hidden" }}>
-                    {emp.profilePic||emp.profileImage ? <img src={emp.profilePic||emp.profileImage} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : (emp.name||"E").charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:"#1e293b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{emp.name||emp.fullName}</div>
-                    <div style={{ fontSize:10, color:"#94a3b8" }}>{emp.employeeId||emp.id}</div>
-                  </div>
-                </button>
-              ))}
+                  <button key={emp.uid} onClick={() => setSelectedEmp(emp)}
+                    style={{ width:"100%", padding:"12px 14px", border:0, borderBottom:"1px solid #f8fafc", background: selectedEmp?.uid===emp.uid?"#eef2ff":"white", cursor:"pointer", textAlign:"left", display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ width:34, height:34, borderRadius:10, background:"#eef2ff", color:"#4f46e5", display:"grid", placeItems:"center", fontWeight:800, fontSize:14, flexShrink:0, overflow:"hidden" }}>
+                      {emp.profilePic||emp.profileImage ? <img src={emp.profilePic||emp.profileImage} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : (emp.name||"E").charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"#1e293b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{emp.name||emp.fullName}</div>
+                      <div style={{ fontSize:10, color:"#94a3b8" }}>{emp.employeeId||emp.id}</div>
+                    </div>
+                  </button>
+                ))
+              }
             </div>
           </div>
           <div style={{ background:"white", border:"1px solid #e2e8f0", borderRadius:14, display:"flex", flexDirection:"column", overflow:"hidden" }}>
             {!selectedEmp ? (
-              <div style={{ flex:1, display:"grid", placeItems:"center", color:"#94a3b8" }}><div style={{ textAlign:"center" }}><MessageCircle size={36} style={{ marginBottom:10, opacity:.3 }}/><p>Select an employee to start chatting</p></div></div>
+              <div style={{ flex:1, display:"grid", placeItems:"center", color:"#94a3b8" }}>
+                <div style={{ textAlign:"center" }}><MessageCircle size={36} style={{ marginBottom:10, opacity:.3 }}/><p>Select an employee to start chatting</p></div>
+              </div>
             ) : (
               <>
                 <div style={{ padding:"12px 16px", borderBottom:"1px solid #f1f5f9", fontWeight:700, fontSize:13, color:"#1e293b", display:"flex", alignItems:"center", gap:8 }}>
@@ -703,6 +750,11 @@ export default function Dashboard() {
   const [leaves,      setLeaves]      = useState([]);
   const [holidays,    setHolidays]    = useState(defaultHolidays);
 
+  // Chat state lifted here so it survives navigation
+  const [chatSelectedEmp, setChatSelectedEmp] = useState(null);
+  const [chatAdminMsgs,   setChatAdminMsgs]   = useState({}); // keyed by employee uid
+  const [chatMyMsgs,      setChatMyMsgs]       = useState([]);
+
   useEffect(() =>
     onAuthStateChanged(auth, async (u) => {
       setCurrentUser(u);
@@ -782,7 +834,7 @@ export default function Dashboard() {
       case "employee-report":  return <EmployeeReport employees={employees} setPage={setPage}/>;
       case "attendance-report":return <AttendanceReport employees={employees} setPage={setPage}/>;
       case "documents":   return isAdmin ? <AdminDocuments employees={employees}/> : <EmployeeDocuments currentUser={currentUser}/>;
-      case "chat":        return <ChatPage isAdmin={isAdmin} currentUser={currentUser} employees={employees}/>;
+      case "chat":        return <ChatPage isAdmin={isAdmin} currentUser={currentUser} employees={employees} selectedEmp={chatSelectedEmp} setSelectedEmp={setChatSelectedEmp} adminMsgMap={chatAdminMsgs} setAdminMsgMap={setChatAdminMsgs} myMsgs={chatMyMsgs} setMyMsgs={setChatMyMsgs}/>;
       case "profile":     return isAdmin ? <AdminProfile currentUser={currentUser}/> : <EmployeeProfile currentUser={currentUser}/>;
       case "salary-slip": return <SalarySlip currentUser={currentUser}/>;
       case "admin-management": return isMainAdmin ? <AdminManagement currentUser={currentUser}/> : null;
