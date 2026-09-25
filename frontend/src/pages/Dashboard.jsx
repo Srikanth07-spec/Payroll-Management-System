@@ -16,6 +16,10 @@ import CalculateSalary from "./admin/CalculateSalary";
 import AdminDocuments from "./admin/AdminDocuments";
 import AdminProfile from "./admin/AdminProfile";
 import AdminManagement from "./admin/AdminManagement";
+import BranchPage from "./admin/BranchPage";
+import DepartmentPage from "./admin/DepartmentPage";
+import DesignationPage from "./admin/DesignationPage";
+import ShiftPage from "./admin/ShiftPage";
 import EmployeeDashboard from "./employee/EmployeeDashboard";
 import EmployeeAttendance from "./employee/EmployeeAttendance";
 import ApplyLeave from "./employee/ApplyLeave";
@@ -23,6 +27,7 @@ import EmployeeDocuments from "./employee/EmployeeDocuments";
 import EmployeeProfile from "./employee/EmployeeProfile";
 import SalarySlip from "./employee/SalarySlip";
 import { getEmployees, getLeaves, loadData, saveData } from "./shared/payrollData";
+import { fetchEmployees, fetchLeaves, fetchHolidays } from "../services/supabaseService";
 import { useTheme } from "../context/ThemeContext.jsx";
 import "./Dashboard.css";
 
@@ -704,10 +709,10 @@ export default function Dashboard() {
         return isAdmin
           ? <AdminDashboard currentUser={currentUser} setPage={setPage} employees={employees} leaves={leaves} holidays={holidays}/>
           : <EmployeeDashboard currentUser={currentUser} setPage={setPage} employees={employees} leaves={leaves} holidays={holidays}/>;
-      case "branch":      return <OrgPage type="branch"      employees={employees}/>;
-      case "department":  return <OrgPage type="department"  employees={employees}/>;
-      case "designation": return <OrgPage type="designation" employees={employees}/>;
-      case "shift":       return <OrgPage type="shift"       employees={employees}/>;
+      case "branch":      return <BranchPage     employees={employees}/>;
+      case "department":  return <DepartmentPage  employees={employees}/>;
+      case "designation": return <DesignationPage employees={employees}/>;
+      case "shift":       return <ShiftPage       employees={employees}/>;
       case "holidays":    return <Holidays holidays={holidays} setHolidays={setHolidays} isAdmin={isAdmin}/>;
       case "employees":   return <Employees employees={employees} setEmployees={setEmployees}/>;
       case "leaves":      return <AdminLeaveApproval leaves={leaves} setLeaves={setLeaves} employees={employees}/>;

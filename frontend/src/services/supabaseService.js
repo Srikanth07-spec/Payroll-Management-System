@@ -335,3 +335,138 @@ export async function insertChatMessage(msg) {
     return msg;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   BRANCHES
+   ════════════════════════════════════════════════════════════════ */
+export async function fetchBranches() {
+  try {
+    const { data, error } = await supabase.from("branches").select("*").order("name");
+    if (error) throw error;
+    cache.set("org_branches", data || []);
+    return data || [];
+  } catch (err) {
+    console.warn("[supabaseService] fetchBranches:", err.message);
+    return cache.get("org_branches") || [];
+  }
+}
+export async function upsertBranch(row) {
+  try {
+    const { data, error } = await supabase.from("branches").upsert([row], { onConflict: "id" }).select().single();
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn("[supabaseService] upsertBranch:", err.message);
+    return row;
+  }
+}
+export async function deleteBranch(id) {
+  try {
+    const { error } = await supabase.from("branches").delete().eq("id", id);
+    if (error) throw error;
+  } catch (err) {
+    console.warn("[supabaseService] deleteBranch:", err.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DEPARTMENTS
+   ════════════════════════════════════════════════════════════════ */
+export async function fetchDepartments() {
+  try {
+    const { data, error } = await supabase.from("departments").select("*").order("name");
+    if (error) throw error;
+    cache.set("org_departments", data || []);
+    return data || [];
+  } catch (err) {
+    console.warn("[supabaseService] fetchDepartments:", err.message);
+    return cache.get("org_departments") || [];
+  }
+}
+export async function upsertDepartment(row) {
+  try {
+    const { data, error } = await supabase.from("departments").upsert([row], { onConflict: "id" }).select().single();
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn("[supabaseService] upsertDepartment:", err.message);
+    return row;
+  }
+}
+export async function deleteDepartment(id) {
+  try {
+    const { error } = await supabase.from("departments").delete().eq("id", id);
+    if (error) throw error;
+  } catch (err) {
+    console.warn("[supabaseService] deleteDepartment:", err.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DESIGNATIONS
+   ════════════════════════════════════════════════════════════════ */
+export async function fetchDesignations(department) {
+  try {
+    let q = supabase.from("designations").select("*").order("name");
+    if (department) q = q.eq("department", department);
+    const { data, error } = await q;
+    if (error) throw error;
+    cache.set("org_designations", data || []);
+    return data || [];
+  } catch (err) {
+    console.warn("[supabaseService] fetchDesignations:", err.message);
+    const all = cache.get("org_designations") || [];
+    return department ? all.filter((d) => d.department === department) : all;
+  }
+}
+export async function upsertDesignation(row) {
+  try {
+    const { data, error } = await supabase.from("designations").upsert([row], { onConflict: "id" }).select().single();
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn("[supabaseService] upsertDesignation:", err.message);
+    return row;
+  }
+}
+export async function deleteDesignation(id) {
+  try {
+    const { error } = await supabase.from("designations").delete().eq("id", id);
+    if (error) throw error;
+  } catch (err) {
+    console.warn("[supabaseService] deleteDesignation:", err.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SHIFTS
+   ════════════════════════════════════════════════════════════════ */
+export async function fetchShifts() {
+  try {
+    const { data, error } = await supabase.from("shifts").select("*").order("name");
+    if (error) throw error;
+    cache.set("org_shifts", data || []);
+    return data || [];
+  } catch (err) {
+    console.warn("[supabaseService] fetchShifts:", err.message);
+    return cache.get("org_shifts") || [];
+  }
+}
+export async function upsertShift(row) {
+  try {
+    const { data, error } = await supabase.from("shifts").upsert([row], { onConflict: "id" }).select().single();
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn("[supabaseService] upsertShift:", err.message);
+    return row;
+  }
+}
+export async function deleteShift(id) {
+  try {
+    const { error } = await supabase.from("shifts").delete().eq("id", id);
+    if (error) throw error;
+  } catch (err) {
+    console.warn("[supabaseService] deleteShift:", err.message);
+  }
+}

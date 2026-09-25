@@ -1,17 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Shield,
-  ShieldCheck,
-  ShieldOff,
-  Users,
-  Crown,
-  AlertTriangle,
-  Eye,
-  X,
-  Search,
-  UserCog,
-  Info,
+  Shield, ShieldCheck, ShieldOff, Users, Crown,
+  AlertTriangle, X, Search, UserCog, Info,
 } from "lucide-react";
+import { upsertEmployee } from "../../services/supabaseService";
 
 /* ──────────────────────────────────────────────────────────────
    Constants
@@ -292,11 +284,11 @@ export default function AdminManagement({ currentUser }) {
   const displayList = useMemo(() => {
     const q = search.trim().toLowerCase();
     return employees.filter((emp) => {
-      const text = [emp.name, emp.fullName, emp.username, emp.email, emp.department]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return !q || text.includes(q);
+      if (!q) return true;
+      return [emp.name, emp.fullName, emp.username, emp.email,
+              emp.department, emp.designation, emp.branch,
+              emp.employeeId, emp.id]
+        .filter(Boolean).join(" ").toLowerCase().includes(q);
     });
   }, [employees, search]);
 
@@ -338,43 +330,51 @@ export default function AdminManagement({ currentUser }) {
   };
 
   /* ── execute confirmed action ── */
-  const executeAction = () => {
+  const executeAction = async () => {
     if (!confirmAction) return;
     const { type, emp } = confirmAction;
 
-    const selUid = emp.uid;
+    // Security: re-check permissions server-side equivalent
+    if (!iAmMainAdmin) {
+      showToast("Only the Main Admin can change roles.");
+      setConfirmAction(null);
+      return;
+    }
+    if (isMainAdmin(emp)) {
+      showToast("The Main Admin account cannot be demoted.");
+      setConfirmAction(null);
+      return;
+    }
+    if ((emp.uid && emp.uid === currentUid) || norm(emp.email) === currentEmail) {
+      showToast("You cannot remove your own admin access.");
+      setConfirmAction(null);
+      return;
+    }
+
+    const selUid   = emp.uid;
     const selEmail = norm(emp.email);
 
-    const updated = employees.map((e) => {
-      const match =
-        (selUid && e.uid === selUid) ||
-        norm(e.email) === selEmail;
-      if (!match) return e;
+    const updatedEmp = employees.find((e) =>
+      (selUid && e.uid === selUid) || norm(e.email) === selEmail
+    );
+    if (!updatedEmp) { setConfirmAction(null); return; }
 
-      if (type === "grant") {
-        return {
-          ...e,
-          role: "admin",
-          isAdmin: true,
-          adminGrantedAt: new Date().toISOString(),
-          adminGrantedBy: currentEmail,
-        };
-      }
-      if (type === "revoke") {
-        return {
-          ...e,
-          role: "employee",
-          isAdmin: false,
-          adminRevokedAt: new Date().toISOString(),
-          adminRevokedBy: currentEmail,
-        };
-      }
-      return e;
-    });
+    const changed = type === "grant"
+      ? { ...updatedEmp, role: "admin",    isAdmin: true,  adminGrantedAt: new Date().toISOString(), adminGrantedBy: currentEmail }
+      : { ...updatedEmp, role: "employee", isAdmin: false, adminRevokedAt: new Date().toISOString(), adminRevokedBy: currentEmail };
+
+    const updated = employees.map((e) =>
+      (selUid && e.uid === selUid) || norm(e.email) === selEmail ? changed : e
+    );
 
     saveData("payroll_employees", updated);
     setEmployees(updated);
     setConfirmAction(null);
+
+    // Sync role change to Supabase so website reflects it
+    await upsertEmployee(changed).catch((err) =>
+      console.warn("Role sync to Supabase failed:", err.message)
+    );
 
     const empName = emp.name || emp.fullName || emp.username || emp.email;
     showToast(
