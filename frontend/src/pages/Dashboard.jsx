@@ -310,19 +310,14 @@ function Holidays({ holidays, setHolidays, isAdmin }) {
 /* ── Chat ── */
 function ChatPage({ isAdmin, currentUser, employees = [] }) {
   const empName = currentUser?.displayName || currentUser?.email?.split("@")[0] || "Employee";
-
-  /* ── Admin state ── */
-  const [selectedEmp,  setSelectedEmp]  = useState(null); // {uid, name, email}
+  const [selectedEmp,  setSelectedEmp]  = useState(null);
   const [adminMsgs,    setAdminMsgs]    = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
-
-  /* ── Employee state ── */
   const [myMsgs,    setMyMsgs]    = useState([]);
   const [myLoading, setMyLoading] = useState(false);
-  const [tab,       setTab]       = useState("chat");
-  const [reqType,   setReqType]   = useState("Leave Extension");
-  const [reqBody,   setReqBody]   = useState("");
-
+  const [tab,    setTab]    = useState("chat");
+  const [reqType,setReqType]= useState("Leave Extension");
+  const [reqBody,setReqBody]= useState("");
   const [text,   setText]   = useState("");
   const endRef = useRef(null);
 
@@ -336,138 +331,86 @@ function ChatPage({ isAdmin, currentUser, employees = [] }) {
     "Other Request":         `Subject: General Request\n\nRespected Admin,\n\n[Describe your request here]\n\nRegards,\n${empName}`,
   };
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [adminMsgs, myMsgs]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [adminMsgs, myMsgs]);
 
-  /* ── Load admin conversation with selected employee ── */
   useEffect(() => {
     if (!isAdmin || !selectedEmp) return;
     setAdminLoading(true);
-    supabase
-      .from("chat_messages")
-      .select("*")
+    supabase.from("chat_messages").select("*")
       .or(`recipient_uid.eq.${selectedEmp.uid},and(role.eq.employee,email.eq.${selectedEmp.email})`)
       .order("created_at", { ascending: true })
       .then(({ data }) => { setAdminMsgs(data || []); setAdminLoading(false); });
-  }, [isAdmin, selectedEmp]);
+  }, [isAdmin, selectedEmp?.uid]);
 
-  /* ── Load employee's own messages ── */
   useEffect(() => {
     if (isAdmin || !currentUser?.uid) return;
     setMyLoading(true);
-    supabase
-      .from("chat_messages")
-      .select("*")
+    supabase.from("chat_messages").select("*")
       .or(`recipient_uid.eq.${currentUser.uid},and(role.eq.employee,email.eq.${currentUser.email})`)
       .order("created_at", { ascending: true })
       .then(({ data }) => { setMyMsgs(data || []); setMyLoading(false); });
   }, [isAdmin, currentUser?.uid]);
 
-  /* ── Send message ── */
   const send = async () => {
     if (!text.trim()) return;
-    const msg = {
-      id: Date.now(),
-      sender: isAdmin ? "Admin" : empName,
-      email: currentUser?.email,
-      role: isAdmin ? "admin" : "employee",
-      message: text.trim(),
-      recipient_uid: isAdmin ? selectedEmp?.uid : null,
-      is_request: false,
-      created_at: new Date().toISOString(),
-    };
+    const msg = { id: Date.now(), sender: isAdmin?"Admin":empName, email: currentUser?.email, role: isAdmin?"admin":"employee", message: text.trim(), recipient_uid: isAdmin ? selectedEmp?.uid : null, is_request: false, created_at: new Date().toISOString() };
     setText("");
-    if (isAdmin) setAdminMsgs((prev) => [...prev, msg]);
-    else setMyMsgs((prev) => [...prev, msg]);
-
+    if (isAdmin) setAdminMsgs((p) => [...p, msg]); else setMyMsgs((p) => [...p, msg]);
     sendPrivateMessage({ ...msg, recipientUid: msg.recipient_uid }).catch(console.warn);
   };
-
   const sendReq = async () => {
     if (!reqBody.trim()) return;
-    const msg = {
-      id: Date.now(),
-      sender: empName, email: currentUser?.email,
-      role: "employee",
-      message: `📋 REQUEST\nType: ${reqType}\n\n${reqBody.trim()}`,
-      is_request: true, request_type: reqType,
-      recipient_uid: null,
-      created_at: new Date().toISOString(),
-    };
-    setMyMsgs((prev) => [...prev, msg]);
-    setReqBody(""); setTab("chat");
+    const msg = { id: Date.now(), sender: empName, email: currentUser?.email, role:"employee", message:`📋 REQUEST\nType: ${reqType}\n\n${reqBody.trim()}`, is_request:true, request_type:reqType, recipient_uid:null, created_at: new Date().toISOString() };
+    setMyMsgs((p) => [...p, msg]); setReqBody(""); setTab("chat");
     sendPrivateMessage({ ...msg, recipientUid: null }).catch(console.warn);
   };
 
-  /* ── ADMIN VIEW ── */
   if (isAdmin) {
     const empList = employees.filter((e) => e.uid && e.email);
     return (
       <>
-        <div className="section-title">
-          <div><h2>Chat</h2><p>Select an employee to view and send private messages.</p></div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, height: 520 }}>
-          {/* Employee list */}
-          <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, fontSize: 13, color: "#475569" }}>
-              Employees ({empList.length})
-            </div>
-            <div style={{ overflowY: "auto", flex: 1 }}>
-              {empList.length === 0 ? (
-                <div style={{ padding: 20, color: "#94a3b8", fontSize: 12, textAlign: "center" }}>No employees found</div>
-              ) : empList.map((emp) => (
+        <div className="section-title"><div><h2>Chat</h2><p>Select an employee to send private messages.</p></div></div>
+        <div style={{ display:"grid", gridTemplateColumns:"260px 1fr", gap:16, height:520 }}>
+          <div style={{ background:"white", border:"1px solid #e2e8f0", borderRadius:14, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:"12px 14px", borderBottom:"1px solid #f1f5f9", fontWeight:700, fontSize:13, color:"#475569" }}>Employees ({empList.length})</div>
+            <div style={{ overflowY:"auto", flex:1 }}>
+              {empList.length === 0 ? <div style={{ padding:20, color:"#94a3b8", fontSize:12, textAlign:"center" }}>No employees</div>
+                : empList.map((emp) => (
                 <button key={emp.uid} onClick={() => setSelectedEmp(emp)}
-                  style={{
-                    width: "100%", padding: "12px 14px", border: 0, borderBottom: "1px solid #f8fafc",
-                    background: selectedEmp?.uid === emp.uid ? "#eef2ff" : "white",
-                    cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10,
-                  }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, background: "#eef2ff", color: "#4f46e5", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
-                    {emp.profilePic || emp.profileImage ? <img src={emp.profilePic || emp.profileImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10 }} /> : (emp.name || "E").charAt(0).toUpperCase()}
+                  style={{ width:"100%", padding:"12px 14px", border:0, borderBottom:"1px solid #f8fafc", background: selectedEmp?.uid===emp.uid?"#eef2ff":"white", cursor:"pointer", textAlign:"left", display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:34, height:34, borderRadius:10, background:"#eef2ff", color:"#4f46e5", display:"grid", placeItems:"center", fontWeight:800, fontSize:14, flexShrink:0, overflow:"hidden" }}>
+                    {emp.profilePic||emp.profileImage ? <img src={emp.profilePic||emp.profileImage} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : (emp.name||"E").charAt(0).toUpperCase()}
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{emp.name || emp.fullName}</div>
-                    <div style={{ fontSize: 10, color: "#94a3b8" }}>{emp.employeeId || emp.id}</div>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#1e293b", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{emp.name||emp.fullName}</div>
+                    <div style={{ fontSize:10, color:"#94a3b8" }}>{emp.employeeId||emp.id}</div>
                   </div>
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Conversation */}
-          <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background:"white", border:"1px solid #e2e8f0", borderRadius:14, display:"flex", flexDirection:"column", overflow:"hidden" }}>
             {!selectedEmp ? (
-              <div style={{ flex: 1, display: "grid", placeItems: "center", color: "#94a3b8" }}>
-                <div style={{ textAlign: "center" }}>
-                  <MessageCircle size={36} style={{ marginBottom: 10, opacity: 0.3 }} />
-                  <p>Select an employee to start chatting</p>
-                </div>
-              </div>
+              <div style={{ flex:1, display:"grid", placeItems:"center", color:"#94a3b8" }}><div style={{ textAlign:"center" }}><MessageCircle size={36} style={{ marginBottom:10, opacity:.3 }}/><p>Select an employee to start chatting</p></div></div>
             ) : (
               <>
-                <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", fontWeight: 700, fontSize: 13, color: "#1e293b", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 28, height: 28, borderRadius: 8, background: "#eef2ff", color: "#4f46e5", display: "inline-grid", placeItems: "center", fontWeight: 800 }}>
-                    {(selectedEmp.name || "E").charAt(0).toUpperCase()}
-                  </span>
-                  {selectedEmp.name || selectedEmp.fullName}
-                  <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>· {selectedEmp.email}</span>
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid #f1f5f9", fontWeight:700, fontSize:13, color:"#1e293b", display:"flex", alignItems:"center", gap:8 }}>
+                  <span style={{ width:28, height:28, borderRadius:8, background:"#eef2ff", color:"#4f46e5", display:"inline-grid", placeItems:"center", fontWeight:800 }}>{(selectedEmp.name||"E").charAt(0).toUpperCase()}</span>
+                  {selectedEmp.name||selectedEmp.fullName} <span style={{ fontSize:11, color:"#94a3b8", fontWeight:500 }}>· {selectedEmp.email}</span>
                 </div>
-                <div className="messages" style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-                  {adminLoading ? <div style={{ color: "#94a3b8", fontSize: 12 }}>Loading…</div> : null}
+                <div className="messages" style={{ flex:1, overflowY:"auto", padding:"14px 16px" }}>
+                  {adminLoading && <div style={{ color:"#94a3b8", fontSize:12 }}>Loading…</div>}
                   {adminMsgs.map((m) => (
-                    <div key={m.id} className={`message ${m.role === "admin" ? "mine" : ""}`}>
+                    <div key={m.id} className={`message ${m.role==="admin"?"mine":""}`}>
                       <span>{m.sender}</span>
-                      <p style={{ whiteSpace: "pre-wrap" }}>
-                        {m.is_request && <span style={{ fontSize: 10, background: "#ede9fe", color: "#6d28d9", borderRadius: 6, padding: "2px 7px", marginRight: 6, fontWeight: 700 }}>REQUEST</span>}
-                        {m.message}
-                      </p>
+                      <p style={{ whiteSpace:"pre-wrap" }}>{m.is_request&&<span style={{ fontSize:10, background:"#ede9fe", color:"#6d28d9", borderRadius:6, padding:"2px 7px", marginRight:6, fontWeight:700 }}>REQUEST</span>}{m.message}</p>
                     </div>
                   ))}
-                  <div ref={endRef} />
+                  <div ref={endRef}/>
                 </div>
                 <div className="chat-input">
-                  <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={`Message ${selectedEmp.name}…`} />
-                  <button onClick={send}><MessageCircle size={18} /></button>
+                  <input value={text} onChange={(e)=>setText(e.target.value)} onKeyDown={(e)=>e.key==="Enter"&&send()} placeholder={`Message ${selectedEmp.name}…`}/>
+                  <button onClick={send}><MessageCircle size={18}/></button>
                 </div>
               </>
             )}
@@ -477,63 +420,47 @@ function ChatPage({ isAdmin, currentUser, employees = [] }) {
     );
   }
 
-  /* ── EMPLOYEE VIEW ── */
   return (
     <>
       <div className="section-title">
         <div><h2>Chat with Admin</h2><p>Send messages or request letters to the administrator.</p></div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {["chat", "request"].map((t) => (
-            <button key={t} onClick={() => { setTab(t); if (t === "request") setReqBody(TMPLS[reqType]); }}
-              style={{ padding: "8px 16px", borderRadius: 10, fontWeight: 700, fontSize: 12, border: "1px solid #e2e8f0", cursor: "pointer", background: tab === t ? "#4f46e5" : "white", color: tab === t ? "white" : "#475569" }}>
-              {t === "chat" ? "💬 Chat" : "📋 Request"}
+        <div style={{display:"flex",gap:8}}>
+          {["chat","request"].map((t)=>(
+            <button key={t} onClick={()=>{setTab(t);if(t==="request")setReqBody(TMPLS[reqType]);}} style={{padding:"8px 16px",borderRadius:10,fontWeight:700,fontSize:12,border:"1px solid #e2e8f0",cursor:"pointer",background:tab===t?"#4f46e5":"white",color:tab===t?"white":"#475569"}}>
+              {t==="chat"?"💬 Chat":"📋 Request"}
             </button>
           ))}
         </div>
       </div>
-
-      {tab === "chat" && (
+      {tab==="chat" && (
         <div className="chat-panel">
           <div className="messages">
-            {myLoading ? <div style={{ color: "#94a3b8", fontSize: 12, padding: 10 }}>Loading…</div> : null}
-            {myMsgs.map((m) => (
-              <div key={m.id} className={`message ${m.role === "employee" ? "mine" : ""}`}>
-                <span>{m.role === "admin" ? "Admin" : empName}</span>
-                <p style={{ whiteSpace: "pre-wrap" }}>
-                  {m.is_request && <span style={{ fontSize: 10, background: "#ede9fe", color: "#6d28d9", borderRadius: 6, padding: "2px 7px", marginRight: 6, fontWeight: 700 }}>REQUEST</span>}
-                  {m.message}
-                </p>
+            {myLoading && <div style={{ color:"#94a3b8", fontSize:12, padding:10 }}>Loading…</div>}
+            {myMsgs.map((m)=>(
+              <div key={m.id} className={`message ${m.role==="employee"?"mine":""}`}>
+                <span>{m.role==="admin"?"Admin":empName}</span>
+                <p style={{whiteSpace:"pre-wrap"}}>{m.is_request&&<span style={{fontSize:10,background:"#ede9fe",color:"#6d28d9",borderRadius:6,padding:"2px 7px",marginRight:6,fontWeight:700}}>REQUEST</span>}{m.message}</p>
               </div>
             ))}
-            <div ref={endRef} />
+            <div ref={endRef}/>
           </div>
           <div className="chat-input">
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Type a message to Admin..." />
-            <button onClick={send}><MessageCircle size={18} /></button>
+            <input value={text} onChange={(e)=>setText(e.target.value)} onKeyDown={(e)=>e.key==="Enter"&&send()} placeholder="Type a message to Admin..."/>
+            <button onClick={send}><MessageCircle size={18}/></button>
           </div>
         </div>
       )}
-
-      {tab === "request" && (
-        <div className="panel" style={{ maxWidth: 720 }}>
-          <h3 style={{ margin: "0 0 4px", fontSize: 16 }}>Request Letter to Admin</h3>
-          <p style={{ margin: "0 0 14px", fontSize: 12, color: "#7b8494" }}>Select type, edit template, send to Admin.</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-            {REQ_TYPES.map((t) => (
-              <button key={t} onClick={() => { setReqType(t); setReqBody(TMPLS[t]); }}
-                style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, border: "1px solid #e2e8f0", cursor: "pointer", background: reqType === t ? "#4f46e5" : "white", color: reqType === t ? "white" : "#475569" }}>{t}</button>
-            ))}
+      {tab==="request" && (
+        <div className="panel" style={{maxWidth:720}}>
+          <h3 style={{margin:"0 0 4px",fontSize:16}}>Request Letter to Admin</h3>
+          <p style={{margin:"0 0 14px",fontSize:12,color:"#7b8494"}}>Select type, edit template, send to Admin.</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
+            {REQ_TYPES.map((t)=>(<button key={t} onClick={()=>{setReqType(t);setReqBody(TMPLS[t]);}} style={{padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,border:"1px solid #e2e8f0",cursor:"pointer",background:reqType===t?"#4f46e5":"white",color:reqType===t?"white":"#475569"}}>{t}</button>))}
           </div>
-          <textarea value={reqBody} onChange={(e) => setReqBody(e.target.value)} rows={10}
-            style={{ width: "100%", padding: "12px 14px", border: "1.5px solid #e1e6ef", borderRadius: 10, fontSize: 13, lineHeight: 1.7, resize: "vertical", fontFamily: "inherit", outline: "none", boxSizing: "border-box" }}
-            onFocus={(e) => e.target.style.borderColor = "#4f46e5"} onBlur={(e) => e.target.style.borderColor = "#e1e6ef"}
-            placeholder="Edit the template above…" />
-          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <button onClick={() => setTab("chat")} style={{ padding: "10px 20px", border: "1px solid #e2e8f0", background: "white", color: "#475569", borderRadius: 10, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Cancel</button>
-            <button onClick={sendReq} disabled={!reqBody.trim()}
-              style={{ padding: "10px 24px", background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "white", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 13, opacity: reqBody.trim() ? 1 : 0.5 }}>
-              📋 Send Request
-            </button>
+          <textarea value={reqBody} onChange={(e)=>setReqBody(e.target.value)} rows={10} style={{width:"100%",padding:"12px 14px",border:"1.5px solid #e1e6ef",borderRadius:10,fontSize:13,lineHeight:1.7,resize:"vertical",fontFamily:"inherit",outline:"none",boxSizing:"border-box"}} onFocus={(e)=>e.target.style.borderColor="#4f46e5"} onBlur={(e)=>e.target.style.borderColor="#e1e6ef"} placeholder="Edit the template above…"/>
+          <div style={{display:"flex",gap:10,marginTop:14}}>
+            <button onClick={()=>setTab("chat")} style={{padding:"10px 20px",border:"1px solid #e2e8f0",background:"white",color:"#475569",borderRadius:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Cancel</button>
+            <button onClick={sendReq} disabled={!reqBody.trim()} style={{padding:"10px 24px",background:"linear-gradient(135deg,#4f46e5,#7c3aed)",color:"white",border:"none",borderRadius:10,fontWeight:700,cursor:"pointer",fontSize:13,opacity:reqBody.trim()?1:0.5}}>📋 Send Request</button>
           </div>
         </div>
       )}

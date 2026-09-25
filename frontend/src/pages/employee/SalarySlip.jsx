@@ -26,7 +26,7 @@ function PayslipCard({ slip }) {
   const ref = useRef(null);
   const [downloading, setDownloading] = useState(false);
 
-  /* PRINT — opens browser print dialog */
+  /* PRINT — opens browser print dialog only */
   const handlePrint = () => {
     ensurePrintStyle();
     const root = document.getElementById("payslip-print-root") || document.createElement("div");
@@ -39,7 +39,7 @@ function PayslipCard({ slip }) {
     setTimeout(() => { root.style.display = "none"; }, 500);
   };
 
-  /* DOWNLOAD — generates PDF directly without print dialog */
+  /* DOWNLOAD — generates PDF file directly, no print dialog */
   const handleDownload = async () => {
     if (!ref.current || downloading) return;
     setDownloading(true);
@@ -51,9 +51,7 @@ function PayslipCard({ slip }) {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`PaySlip_${slip.employee || "Employee"}_${slip.month}_${slip.year}.pdf`);
-    } catch (err) {
-      console.error("PDF download failed:", err);
-    }
+    } catch (err) { console.error("PDF download failed:", err); }
     setDownloading(false);
   };
 

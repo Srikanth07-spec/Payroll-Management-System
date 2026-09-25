@@ -507,7 +507,7 @@ export async function deleteShift(id) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   DOCUMENTS  (Supabase Storage + documents table)
+   DOCUMENTS
    ════════════════════════════════════════════════════════════════ */
 const DOC_BUCKET = "payroll-documents";
 
@@ -515,18 +515,14 @@ export async function uploadDocument(file, employeeUid, title) {
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${employeeUid}/${Date.now()}-${safe}`;
   const { error: uploadErr } = await supabase.storage
-    .from(DOC_BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .from(DOC_BUCKET).upload(path, file, { upsert: false, contentType: file.type });
   if (uploadErr) throw uploadErr;
-
   const { data: { publicUrl } } = supabase.storage.from(DOC_BUCKET).getPublicUrl(path);
-
   const { data, error } = await supabase.from("documents").insert([{
     uid: employeeUid, title: title || file.name,
     file_name: file.name, file_path: path,
     file_type: file.type, file_size: file.size,
-    public_url: publicUrl,
-    created_at: new Date().toISOString(),
+    public_url: publicUrl, created_at: new Date().toISOString(),
   }]).select().single();
   if (error) throw error;
   return data;
@@ -552,39 +548,11 @@ export function getDocumentUrl(filePath) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   PRIVATE CHAT  (per-employee conversations)
+   PRIVATE CHAT
    ════════════════════════════════════════════════════════════════ */
-
-// Fetch messages between admin and a specific employee (by uid)
-export async function fetchPrivateMessages(employeeUid) {
-  const { data, error } = await supabase
-    .from("chat_messages")
-    .select("*")
-    .or(`recipient_uid.eq.${employeeUid},and(role.eq.employee,email.eq.${employeeUid})`)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return data || [];
-}
-
-// Fetch messages where employee_uid matches (employee's own view)
-export async function fetchMyMessages(employeeUid, employeeEmail) {
-  const { data, error } = await supabase
-    .from("chat_messages")
-    .select("*")
-    .or(
-      `recipient_uid.eq.${employeeUid},` +
-      `and(role.eq.employee,recipient_uid.is.null,email.eq.${employeeEmail})`
-    )
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return data || [];
-}
-
-// Insert a private chat message
 export async function sendPrivateMessage({ sender, email, role, message, recipientUid, isRequest, requestType }) {
   const { data, error } = await supabase.from("chat_messages").insert([{
-    id: Date.now(),
-    sender, email, role, message,
+    id: Date.now(), sender, email, role, message,
     recipient_uid: recipientUid || null,
     is_request: isRequest || false,
     request_type: requestType || null,
