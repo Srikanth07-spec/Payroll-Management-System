@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import { BriefcaseBusiness, Lock, Mail, MapPin, Phone, Shield, User } from "lucide-react";
-import { loadData } from "../shared/payrollData";
+import { fetchEmployees } from "../../services/supabaseService";
 import "./EmployeeProfile.css";
 
 const norm = (e) => String(e || "").trim().toLowerCase();
 
-function getEmployee(currentUser) {
+async function getEmployee(currentUser) {
   if (!currentUser) return null;
-  const list = loadData("payroll_employees", []);
-  return (
-    list.find((e) => e.uid && e.uid === currentUser.uid) ||
-    list.find((e) => norm(e.email) === norm(currentUser.email)) ||
-    null
-  );
+  try {
+    const list = await fetchEmployees();
+    return (
+      list.find((e) => e.uid && e.uid === currentUser.uid) ||
+      list.find((e) => norm(e.email) === norm(currentUser.email)) ||
+      null
+    );
+  } catch {
+    return null;
+  }
 }
 
 /* ── Only show a field if the value exists ── */
@@ -62,11 +66,15 @@ function SectionHeading({ icon, title, subtitle, badge }) {
 export default function EmployeeProfile({ currentUser }) {
   const [employee, setEmployee] = useState(null);
 
-  const load = () => setEmployee(getEmployee(currentUser));
+  const load = async () => {
+    const emp = await getEmployee(currentUser);
+    setEmployee(emp);
+  };
   useEffect(() => {
     load();
-    ["payroll-employees-updated", "payroll-profile-updated", "storage"].forEach((e) => window.addEventListener(e, load));
-    return () => ["payroll-employees-updated", "payroll-profile-updated", "storage"].forEach((e) => window.removeEventListener(e, load));
+    const refresh = () => load();
+    window.addEventListener("payroll-employees-updated", refresh);
+    return () => window.removeEventListener("payroll-employees-updated", refresh);
   }, [currentUser?.uid]);
 
   const name     = employee?.name || employee?.fullName || currentUser?.displayName || "Employee";

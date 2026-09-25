@@ -11,23 +11,15 @@ import {
 import "./Employees.css";
 
 /* ── Constants ── */
-const ADMIN_EMAIL     = "adminpayroll03@gmail.com";
+const ADMIN_EMAIL      = "adminpayroll03@gmail.com";
 const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Contract", "Intern"];
 const BLOOD_GROUPS     = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
-
 const norm = (e) => String(e || "").trim().toLowerCase();
 
-function loadData(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? (JSON.parse(v) ?? fallback) : fallback; }
-  catch { return fallback; }
-}
-function persist(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+/* ── Signal Dashboard to re-fetch employees from Supabase ── */
+function signalRefresh() {
   window.dispatchEvent(new Event("payroll-employees-updated"));
-  window.dispatchEvent(new Event("payroll-profile-updated"));
-  window.dispatchEvent(new Event("storage"));
 }
-const loadEmployees = () => loadData("payroll_employees", []);
 
 /* ── Reusable form fields ── */
 function FormField({ label, value, onChange, placeholder, type = "text", required = true }) {
@@ -173,11 +165,12 @@ function ViewEmployeeModal({ employee, onClose, onEdit, onDelete }) {
 /* ══════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ══════════════════════════════════════════════════════════════ */
-export default function Employees({ employees: employeesFromParent, setEmployees: setEmployeesFromParent }) {
-  const [employees,   setEmployees]   = useState(Array.isArray(employeesFromParent) ? employeesFromParent : loadEmployees());
-  const [search,      setSearch]      = useState("");
-  const [deptFilter,  setDeptFilter]  = useState("All");
-  const [branchFilter,setBranchFilter]= useState("All");
+export default function Employees({ employees: employeesFromParent = [], setEmployees: setEmployeesFromParent }) {
+  // employees come from Dashboard (fetched from Supabase) — no localStorage
+  const [employees,    setEmployees]    = useState(Array.isArray(employeesFromParent) ? employeesFromParent : []);
+  const [search,       setSearch]       = useState("");
+  const [deptFilter,   setDeptFilter]   = useState("All");
+  const [branchFilter, setBranchFilter] = useState("All");
   const [selectedEmployee,  setSelectedEmployee]  = useState(null);
   const [showEditModal,     setShowEditModal]     = useState(false);
   const [showViewModal,     setShowViewModal]     = useState(false);
@@ -185,6 +178,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
   const [showDeleteModal,   setShowDeleteModal]   = useState(false);
   const [form,    setForm]    = useState({});
   const [toast,   setToast]   = useState("");
+  const [saving,  setSaving]  = useState(false);
 
   /* ── Master data from Supabase ── */
   const [masterBranches,     setMasterBranches]     = useState([]);
@@ -192,7 +186,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
   const [masterDesignations, setMasterDesignations] = useState([]);
   const [masterShifts,       setMasterShifts]       = useState([]);
 
-  /* Designations filtered by selected department in form */
+  /* Designations filtered by selected department */
   const availableDesignations = useMemo(() =>
     form.department
       ? masterDesignations.filter((d) => d.department === form.department && d.status !== "Inactive")
@@ -200,6 +194,12 @@ export default function Employees({ employees: employeesFromParent, setEmployees
     [masterDesignations, form.department]
   );
 
+  // Sync when Dashboard re-fetches from Supabase
+  useEffect(() => {
+    if (Array.isArray(employeesFromParent)) setEmployees(employeesFromParent);
+  }, [employeesFromParent]);
+
+  // Load master data from Supabase on mount
   useEffect(() => {
     Promise.all([fetchBranches(), fetchDepartments(), fetchDesignations(), fetchShifts()])
       .then(([br, de, di, sh]) => {
@@ -209,19 +209,6 @@ export default function Employees({ employees: employeesFromParent, setEmployees
         setMasterShifts(sh.filter((s) => s.status !== "Inactive"));
       });
   }, []);
-
-  /* ── Sync with parent + storage events ── */
-  useEffect(() => {
-    const refresh = () => {
-      const stored = loadEmployees();
-      setEmployees(Array.isArray(stored) ? stored : []);
-      if (setEmployeesFromParent) setEmployeesFromParent(Array.isArray(stored) ? stored : []);
-    };
-    refresh();
-    const events = ["payroll-employees-updated", "storage"];
-    events.forEach((e) => window.addEventListener(e, refresh));
-    return () => events.forEach((e) => window.removeEventListener(e, refresh));
-  }, [setEmployeesFromParent]);
 
   /* ── Filter out admin account ── */
   const registeredEmployees = useMemo(() =>
@@ -244,14 +231,9 @@ export default function Employees({ employees: employeesFromParent, setEmployees
     });
   }, [registeredEmployees, search, deptFilter, branchFilter]);
 
-  const empName  = (e) => e?.name || e?.fullName || e?.username || "Employee";
+  const empName   = (e) => e?.name || e?.fullName || e?.username || "Employee";
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
   const updateForm = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
-  const syncAndClose = (updated) => {
-    persist("payroll_employees", updated);
-    setEmployees(updated);
-    if (setEmployeesFromParent) setEmployeesFromParent(updated);
-  };
 
   /* ── Photo upload ── */
   const handlePhotoUpload = (file, field) => {
@@ -296,9 +278,10 @@ export default function Employees({ employees: employeesFromParent, setEmployees
         role: "employee", isAdmin: false, biometricEnrolled: false,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
-      const updated = [...employees, newEmp];
-      syncAndClose(updated);
+      // Save to Supabase — source of truth
       await upsertEmployee(newEmp);
+      // Signal Dashboard to re-fetch from Supabase
+      signalRefresh();
       setShowAddModal(false);
       setForm({});
       showToast("Employee account created successfully.");
@@ -310,6 +293,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
       else if (err?.message) msg = err.message;
       showToast(msg);
     }
+    setSaving(false);
   };
 
   /* ── Open Edit ── */
@@ -328,7 +312,7 @@ export default function Employees({ employees: employeesFromParent, setEmployees
     setShowEditModal(true);
   };
 
-  /* ── Save Edit ── */
+  /* ── Save Edit — saves to Supabase ── */
   const saveEdit = async () => {
     if (!selectedEmployee) return;
     const { fullName, email, employeeId, branch, department, designation, shift, employmentType } = form;
@@ -337,35 +321,32 @@ export default function Employees({ employees: employeesFromParent, setEmployees
       showToast("Please complete all required fields."); return;
     }
     const emailNorm = norm(email);
-    const emailConflict = employees.some(
-      (e) => norm(e.email) === emailNorm && e.uid !== selectedEmployee.uid
-    );
-    if (emailConflict) { showToast("Another employee already uses this email."); return; }
-
-    const selId  = selectedEmployee.uid || norm(selectedEmployee.email);
-    const updated = employees.map((emp) => {
-      const empId = emp.uid || norm(emp.email);
-      if (empId !== selId) return emp;
-      return {
-        ...emp,
-        name: fullName.trim(), fullName: fullName.trim(),
-        username: form.username?.trim() || emp.username,
-        email: emailNorm, employeeId: employeeId.trim(), id: employeeId.trim(),
-        branch, department, designation, shift, employmentType,
-        reportingManager: form.reportingManager?.trim() || "",
-        bloodGroup: form.bloodGroup || emp.bloodGroup || "",
-        address: form.address?.trim() || emp.address || "",
-        phone:   form.phone?.trim()   || emp.phone   || "",
-        profilePic: form.profilePic || emp.profilePic || emp.profileImage || "",
-        status: form.status || "Active",
-        updatedAt: new Date().toISOString(),
-      };
-    });
-    syncAndClose(updated);
-    await upsertEmployee(updated.find((e) => e.uid === selectedEmployee.uid) || {});
+    if (employees.some((e) => norm(e.email) === emailNorm && e.uid !== selectedEmployee.uid)) {
+      showToast("Another employee already uses this email."); return;
+    }
+    setSaving(true);
+    const updated = {
+      ...selectedEmployee,
+      name: fullName.trim(), fullName: fullName.trim(),
+      username: form.username?.trim() || selectedEmployee.username,
+      email: emailNorm, employeeId: employeeId.trim(), id: employeeId.trim(),
+      branch, department, designation, shift, employmentType,
+      reportingManager: form.reportingManager?.trim() || "",
+      bloodGroup: form.bloodGroup || selectedEmployee.bloodGroup || "",
+      address: form.address?.trim() || selectedEmployee.address || "",
+      phone:   form.phone?.trim()   || selectedEmployee.phone   || "",
+      profilePic: form.profilePic || selectedEmployee.profilePic || selectedEmployee.profileImage || "",
+      status: form.status || "Active",
+      updated_at: new Date().toISOString(),
+    };
+    // Save to Supabase — source of truth
+    await upsertEmployee(updated);
+    // Signal Dashboard to re-fetch
+    signalRefresh();
     setShowEditModal(false);
     setSelectedEmployee(null);
     setForm({});
+    setSaving(false);
     showToast("Employee information updated successfully.");
   };
 
@@ -373,21 +354,11 @@ export default function Employees({ employees: employeesFromParent, setEmployees
   const openDelete = (emp) => { setSelectedEmployee(emp); setShowDeleteModal(true); };
   const closeDelete = () => { setShowDeleteModal(false); setSelectedEmployee(null); };
 
+  /* ── Delete — removes from Supabase ── */
   const confirmDelete = async () => {
     if (!selectedEmployee) return;
-    const selUid   = selectedEmployee.uid;
-    const selEmail = norm(selectedEmployee.email);
-    const updated = employees.filter((emp) => {
-      if (selUid   && emp.uid === selUid)            return false;
-      if (selEmail && norm(emp.email) === selEmail)  return false;
-      return true;
-    });
-    const att = loadData("payroll_attendance", []);
-    localStorage.setItem("payroll_attendance", JSON.stringify(att.filter(
-      (r) => !(r.uid === selUid || norm(r.email) === selEmail)
-    )));
-    syncAndClose(updated);
-    await deleteEmployeeFromDB(selUid);
+    await deleteEmployeeFromDB(selectedEmployee.uid);
+    signalRefresh();
     closeDelete();
     showToast(`${empName(selectedEmployee)} was permanently deleted.`);
   };

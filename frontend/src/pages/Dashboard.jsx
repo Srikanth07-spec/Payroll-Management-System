@@ -26,8 +26,8 @@ import ApplyLeave from "./employee/ApplyLeave";
 import EmployeeDocuments from "./employee/EmployeeDocuments";
 import EmployeeProfile from "./employee/EmployeeProfile";
 import SalarySlip from "./employee/SalarySlip";
-import { getEmployees, getLeaves, loadData, saveData } from "./shared/payrollData";
-import { fetchEmployees, fetchLeaves, fetchHolidays } from "../services/supabaseService";
+import { getLeaves, loadData, saveData } from "./shared/payrollData";
+import { fetchEmployees, fetchLeaves, fetchHolidays, fetchSalarySlips, fetchAnnouncements } from "../services/supabaseService";
 import { useTheme } from "../context/ThemeContext.jsx";
 import "./Dashboard.css";
 
@@ -40,16 +40,15 @@ const defaultHolidays = [
   { id: 3, name: "Diwali",           date: "2026-11-08", day: "Sunday"  },
 ];
 
-function resolveIsAdmin(firebaseUser) {
+// resolveIsAdmin now accepts the already-fetched employees array
+// so it doesn't need localStorage at all
+function resolveIsAdmin(firebaseUser, employeesList = []) {
   if (!firebaseUser) return false;
   if (norm(firebaseUser.email) === norm(MAIN_ADMIN_EMAIL)) return true;
-  try {
-    const employees = JSON.parse(localStorage.getItem("payroll_employees") || "[]");
-    const record = employees.find(
-      (e) => (e.uid && e.uid === firebaseUser.uid) || norm(e.email) === norm(firebaseUser.email)
-    );
-    return record?.role === "admin" || record?.isAdmin === true;
-  } catch { return false; }
+  const record = employeesList.find(
+    (e) => (e.uid && e.uid === firebaseUser.uid) || norm(e.email) === norm(firebaseUser.email)
+  );
+  return record?.role === "admin" || record?.isAdmin === true;
 }
 
 function Modal({ title, children, onClose }) {
@@ -625,68 +624,52 @@ export default function Dashboard() {
   const [loading,     setLoading]     = useState(true);
   const [page,        setPage]        = useState("home");
   const [mobileOpen,  setMobileOpen]  = useState(false);
-  const [employees,   setEmployees]   = useState(() => getEmployees());
-  const [leaves,      setLeaves]      = useState(() => getLeaves());
-  const [holidays,    setHolidays]    = useState(() => loadData("payroll_holidays", defaultHolidays));
+  const [employees,   setEmployees]   = useState([]);
+  const [leaves,      setLeaves]      = useState([]);
+  const [holidays,    setHolidays]    = useState(defaultHolidays);
 
   useEffect(() =>
     onAuthStateChanged(auth, async (u) => {
-      setCurrentUser(u); setLoading(false); setPage("home");
+      setCurrentUser(u);
+      setPage("home");
 
       if (u) {
-        // Load all data from Supabase on login
+        // Load ALL data from Supabase — Supabase is the source of truth
         try {
           const [emps, lvs, hols] = await Promise.all([
             fetchEmployees(),
             fetchLeaves(),
             fetchHolidays(),
           ]);
-          if (emps.length > 0) setEmployees(emps);
-          if (lvs.length  > 0) setLeaves(lvs);
-          if (hols.length > 0) setHolidays(hols);
+          setEmployees(Array.isArray(emps) ? emps : []);
+          setLeaves(Array.isArray(lvs) ? lvs : []);
+          if (Array.isArray(hols) && hols.length > 0) setHolidays(hols);
         } catch (err) {
-          console.warn("Supabase load failed, using localStorage cache", err.message);
+          console.warn("Supabase load error:", err.message);
         }
       }
 
-      if (u && norm(u.email) !== norm(MAIN_ADMIN_EMAIL) && !resolveIsAdmin(u)) {
-        const sk = `payroll_active_session_${u.uid}`;
-        if (!localStorage.getItem(sk)) {
-          const now = new Date();
-          const items = loadData("payroll_attendance", []);
-          items.push({ id:Date.now(), uid:u.uid, employee:u.displayName||u.email?.split("@")[0]||"Employee", email:u.email, action:"Login", time:now.toISOString(), date:now.toLocaleDateString(), source:"Authentication" });
-          saveData("payroll_attendance", items);
-          localStorage.setItem(sk, now.toISOString());
-        }
-      }
+      setLoading(false);
     }), []
   );
 
-  useEffect(() => saveData("payroll_employees", employees), [employees]);
-  useEffect(() => saveData("payroll_leaves",    leaves),    [leaves]);
-  useEffect(() => saveData("payroll_holidays",  holidays),  [holidays]);
-
+  // Re-fetch employees from Supabase when other components signal an update
   useEffect(() => {
-    const refresh = () => setEmployees(getEmployees());
+    const refresh = async () => {
+      try {
+        const emps = await fetchEmployees();
+        setEmployees(Array.isArray(emps) ? emps : []);
+      } catch { /* silent */ }
+    };
     window.addEventListener("payroll-employees-updated", refresh);
-    window.addEventListener("storage", refresh);
-    return () => { window.removeEventListener("payroll-employees-updated", refresh); window.removeEventListener("storage", refresh); };
+    return () => window.removeEventListener("payroll-employees-updated", refresh);
   }, []);
 
+  // isAdmin computed from Supabase-fetched employees — no localStorage
   const isMainAdmin = norm(currentUser?.email) === norm(MAIN_ADMIN_EMAIL);
-  const isAdmin     = resolveIsAdmin(currentUser);
+  const isAdmin     = resolveIsAdmin(currentUser, employees);
 
   const handleLogout = async () => {
-    if (currentUser && !isAdmin) {
-      const sk = `payroll_active_session_${currentUser.uid}`;
-      if (localStorage.getItem(sk)) {
-        const now = new Date();
-        const items = loadData("payroll_attendance", []);
-        items.push({ id:Date.now(), uid:currentUser.uid, employee:currentUser.displayName||currentUser.email?.split("@")[0]||"Employee", email:currentUser.email, action:"Logout", time:now.toISOString(), date:now.toLocaleDateString(), source:"Authentication" });
-        saveData("payroll_attendance", items);
-        localStorage.removeItem(sk);
-      }
-    }
     await signOut(auth);
   };
 

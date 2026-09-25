@@ -3,32 +3,9 @@ import {
   Shield, ShieldCheck, ShieldOff, Users, Crown,
   AlertTriangle, X, Search, UserCog, Info,
 } from "lucide-react";
-import { upsertEmployee } from "../../services/supabaseService";
+import { fetchEmployees, upsertEmployee } from "../../services/supabaseService";
 
-/* ──────────────────────────────────────────────────────────────
-   Constants
-   ────────────────────────────────────────────────────────────── */
-// The one permanent super-admin — can never be demoted or deleted.
 const MAIN_ADMIN_EMAIL = "adminpayroll03@gmail.com";
-
-/* ──────────────────────────────────────────────────────────────
-   localStorage helpers
-   ────────────────────────────────────────────────────────────── */
-function loadData(key, fallback) {
-  try {
-    const v = localStorage.getItem(key);
-    return v ? (JSON.parse(v) ?? fallback) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveData(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-  window.dispatchEvent(new Event("payroll-employees-updated"));
-  window.dispatchEvent(new Event("storage"));
-}
-
 const norm = (e) => String(e || "").trim().toLowerCase();
 
 /* ──────────────────────────────────────────────────────────────
@@ -262,17 +239,18 @@ export default function AdminManagement({ currentUser }) {
   const [toast, setToast] = useState("");
   const [confirmAction, setConfirmAction] = useState(null); // { type, emp }
 
-  /* ── load ── */
-  const reload = () => {
-    const all = loadData("payroll_employees", []);
-    setEmployees(Array.isArray(all) ? all : []);
+  /* ── load from Supabase ── */
+  const reload = async () => {
+    try {
+      const emps = await fetchEmployees();
+      setEmployees(Array.isArray(emps) ? emps : []);
+    } catch { /* silent */ }
   };
 
   useEffect(() => {
     reload();
-    const events = ["payroll-employees-updated", "storage"];
-    events.forEach((e) => window.addEventListener(e, reload));
-    return () => events.forEach((e) => window.removeEventListener(e, reload));
+    window.addEventListener("payroll-employees-updated", reload);
+    return () => window.removeEventListener("payroll-employees-updated", reload);
   }, []);
 
   const showToast = (msg) => {
@@ -367,14 +345,13 @@ export default function AdminManagement({ currentUser }) {
       (selUid && e.uid === selUid) || norm(e.email) === selEmail ? changed : e
     );
 
-    saveData("payroll_employees", updated);
-    setEmployees(updated);
-    setConfirmAction(null);
-
-    // Sync role change to Supabase so website reflects it
+    // Sync role change to Supabase — source of truth
     await upsertEmployee(changed).catch((err) =>
       console.warn("Role sync to Supabase failed:", err.message)
     );
+    // Re-fetch from Supabase to keep UI consistent
+    await reload();
+    window.dispatchEvent(new Event("payroll-employees-updated"));
 
     const empName = emp.name || emp.fullName || emp.username || emp.email;
     showToast(

@@ -1,6 +1,6 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownToLine, Building2, Printer, WalletCards } from "lucide-react";
-import { loadData } from "../shared/payrollData";
+import { fetchSalarySlips } from "../../services/supabaseService";
 
 /* ─── print styles injected once ──────────────────────────────── */
 const PRINT_STYLE = `
@@ -158,9 +158,16 @@ function PayslipCard({ slip }) {
    MAIN EXPORT
    ═══════════════════════════════════════════════════════════════ */
 export default function SalarySlip({ currentUser }) {
-  const slips = loadData("payroll_salary_slips", [])
-    .filter((s) => s.uid === currentUser?.uid)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const [slips, setSlips] = useState([]);
+  const slipRef = useRef(null);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    fetchSalarySlips(currentUser.uid).then((data) => {
+      const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setSlips(sorted);
+    });
+  }, [currentUser?.uid]);
 
   return (
     <div style={{ paddingBottom: 40 }}>

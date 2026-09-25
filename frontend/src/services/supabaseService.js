@@ -29,10 +29,50 @@ export async function fetchEmployees() {
 }
 
 export async function upsertEmployee(emp) {
+  if (!emp?.uid) return emp;
+  // Only send columns that exist in the employees table schema
+  const row = {
+    uid:               emp.uid,
+    name:              emp.name              || emp.fullName || null,
+    fullName:          emp.fullName          || emp.name     || null,
+    username:          emp.username          || null,
+    email:             emp.email             || null,
+    employeeId:        emp.employeeId        || emp.id       || null,
+    department:        emp.department        || null,
+    designation:       emp.designation       || null,
+    branch:            emp.branch            || null,
+    shift:             emp.shift             || null,
+    employmentType:    emp.employmentType    || null,
+    bloodGroup:        emp.bloodGroup        || null,
+    phone:             emp.phone             || emp.mobile   || null,
+    mobile:            emp.mobile            || emp.phone    || null,
+    address:           emp.address           || null,
+    profilePic:        emp.profilePic        || emp.profileImage || null,
+    profileImage:      emp.profileImage      || emp.profilePic   || null,
+    reportingManager:  emp.reportingManager  || null,
+    joiningDate:       emp.joiningDate       || null,
+    leaveAllowance:    emp.leaveAllowance     ?? 12,
+    status:            emp.status            || "Active",
+    role:              emp.role              || "employee",
+    isAdmin:           emp.isAdmin           ?? false,
+    biometricEnrolled: emp.biometricEnrolled ?? false,
+    adminGrantedAt:    emp.adminGrantedAt    || null,
+    adminGrantedBy:    emp.adminGrantedBy    || null,
+    adminRevokedAt:    emp.adminRevokedAt    || null,
+    adminRevokedBy:    emp.adminRevokedBy    || null,
+    updated_at:        new Date().toISOString(),
+  };
+  // Don't overwrite created_at if updating
+  if (!emp.created_at) row.created_at = new Date().toISOString();
+
   try {
-    const { data, error } = await supabase.from("employees").upsert([emp], { onConflict: "uid" }).select().single();
+    const { data, error } = await supabase
+      .from("employees")
+      .upsert([row], { onConflict: "uid" })
+      .select()
+      .single();
     if (error) throw error;
-    // refresh cache
+    // Update cache
     const all = cache.get("payroll_employees") || [];
     const updated = all.some((e) => e.uid === emp.uid)
       ? all.map((e) => (e.uid === emp.uid ? data : e))
@@ -40,12 +80,7 @@ export async function upsertEmployee(emp) {
     cache.set("payroll_employees", updated);
     return data;
   } catch (err) {
-    console.warn("[supabaseService] upsertEmployee fallback:", err.message);
-    const all = cache.get("payroll_employees") || [];
-    const updated = all.some((e) => e.uid === emp.uid)
-      ? all.map((e) => (e.uid === emp.uid ? emp : e))
-      : [...all, emp];
-    cache.set("payroll_employees", updated);
+    console.warn("[supabaseService] upsertEmployee error:", err.message);
     return emp;
   }
 }
