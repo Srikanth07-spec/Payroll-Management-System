@@ -403,11 +403,13 @@ export async function upsertBranch(row) {
   }
 }
 export async function deleteBranch(id) {
+  if (!id) { console.warn("deleteBranch: no id provided"); return; }
   try {
-    const { error } = await supabase.from("branches").delete().eq("id", id);
+    const { error } = await supabase.from("branches").delete().eq("id", Number(id));
     if (error) throw error;
   } catch (err) {
     console.warn("[supabaseService] deleteBranch:", err.message);
+    throw err; // re-throw so UI knows it failed
   }
 }
 
@@ -441,11 +443,13 @@ export async function upsertDepartment(row) {
   }
 }
 export async function deleteDepartment(id) {
+  if (!id) { console.warn("deleteDepartment: no id provided"); return; }
   try {
-    const { error } = await supabase.from("departments").delete().eq("id", id);
+    const { error } = await supabase.from("departments").delete().eq("id", Number(id));
     if (error) throw error;
   } catch (err) {
     console.warn("[supabaseService] deleteDepartment:", err.message);
+    throw err;
   }
 }
 
@@ -482,11 +486,13 @@ export async function upsertDesignation(row) {
   }
 }
 export async function deleteDesignation(id) {
+  if (!id) { console.warn("deleteDesignation: no id provided"); return; }
   try {
-    const { error } = await supabase.from("designations").delete().eq("id", id);
+    const { error } = await supabase.from("designations").delete().eq("id", Number(id));
     if (error) throw error;
   } catch (err) {
     console.warn("[supabaseService] deleteDesignation:", err.message);
+    throw err;
   }
 }
 
@@ -520,11 +526,13 @@ export async function upsertShift(row) {
   }
 }
 export async function deleteShift(id) {
+  if (!id) { console.warn("deleteShift: no id provided"); return; }
   try {
-    const { error } = await supabase.from("shifts").delete().eq("id", id);
+    const { error } = await supabase.from("shifts").delete().eq("id", Number(id));
     if (error) throw error;
   } catch (err) {
     console.warn("[supabaseService] deleteShift:", err.message);
+    throw err;
   }
 }
 

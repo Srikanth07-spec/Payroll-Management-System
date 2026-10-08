@@ -62,7 +62,7 @@ function Navbar() {
             Log In
           </a>
           <a
-            href="/register"
+            href="/login"
             className="group flex items-center gap-2 rounded-xl bg-blue-600 px-7 py-3 text-[15px] font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700"
           >
             Get Started
@@ -101,7 +101,7 @@ function Navbar() {
               ))}
               <div className="mt-2 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
                 <a href="/login" onClick={closeMobile} className="rounded-xl border border-slate-300 px-4 py-3 text-center text-sm font-semibold">Log In</a>
-                <a href="/register" onClick={closeMobile} className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white">Get Started</a>
+                <a href="/login" onClick={closeMobile} className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white">Get Started</a>
               </div>
             </div>
           </motion.div>
