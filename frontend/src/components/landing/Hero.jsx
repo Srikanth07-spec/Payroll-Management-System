@@ -281,16 +281,47 @@ function Hero() {
       </section>
 
       <section id="contact" className="scroll-mt-24 bg-white px-6 py-24 lg:px-12 lg:py-28">
-        <div className="mx-auto max-w-[1180px] overflow-hidden rounded-[30px] bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white shadow-2xl shadow-blue-900/20 sm:p-12 lg:flex lg:items-center lg:justify-between lg:p-16">
-          <div className="max-w-2xl"><p className="text-sm font-semibold text-blue-100">READY TO SIMPLIFY PAYROLL?</p><h2 className="mt-3 text-3xl font-bold sm:text-4xl">Bring your payroll workflow into one place.</h2><p className="mt-4 text-base leading-7 text-blue-100">Start with a clean, modern payroll experience built around your team.</p></div>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:mt-0 lg:ml-10 lg:shrink-0"><a href="/login" className="rounded-xl bg-white px-6 py-3.5 text-center text-sm font-bold text-blue-700 hover:bg-blue-50">Get Started Free</a><a href="mailto:hello@payrollpro.example" className="flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 text-sm font-bold text-white hover:bg-white/10"><Mail size={16} /> Contact Us</a></div>
+        <div className="mx-auto max-w-[1180px] overflow-hidden rounded-[30px] bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white shadow-2xl shadow-blue-900/20 sm:p-12 lg:flex lg:items-center lg:justify-between lg:p-16">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-blue-100">READY TO SIMPLIFY PAYROLL?</p>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Bring your payroll workflow into one place.</h2>
+            <p className="mt-4 text-base leading-7 text-blue-100">Start with a clean, modern payroll experience built around your team.</p>
+          </div>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:mt-0 lg:ml-10 lg:shrink-0">
+            <a href="/login" className="rounded-xl bg-white px-6 py-3.5 text-center text-sm font-bold text-blue-700 hover:bg-blue-50">Get Started Free</a>
+            <a href="mailto:adminpayroll03@gmail.com" className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur hover:bg-white/20">
+              <Mail size={16} /> adminpayroll03@gmail.com
+            </a>
+          </div>
         </div>
       </section>
 
       <footer className="border-t border-slate-200 bg-white px-6 py-12 lg:px-12">
         <div className="mx-auto grid max-w-[1280px] gap-10 md:grid-cols-4">
-          <div className="md:col-span-2"><div className="flex items-center gap-3"><LogoMark /><span className="text-xl font-bold">PayRoll <span className="text-blue-600">Pro</span></span></div><p className="mt-4 max-w-md text-sm leading-6 text-slate-500">Smart payroll management for modern teams. Simple workflows, organized records and clear reporting.</p></div>
-          <div><h3 className="font-bold text-slate-900">Company</h3><div className="mt-4 space-y-3 text-sm text-slate-500"><a className="block hover:text-blue-600" href="#about">About</a><a className="block hover:text-blue-600" href="#contact">Contact</a><a className="block hover:text-blue-600" href="/login">Log In</a></div></div>
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-3">
+              <LogoMark />
+              <span className="text-xl font-bold">PayRoll <span className="text-blue-600">Pro</span></span>
+            </div>
+            <p className="mt-4 max-w-md text-sm leading-6 text-slate-500">
+              Smart payroll management for modern teams. Simple workflows, organized records and clear reporting.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900">Company</h3>
+            <div className="mt-4 space-y-3 text-sm text-slate-500">
+              <a className="block hover:text-blue-600" href="#about">About</a>
+              <a className="block hover:text-blue-600" href="#contact">Contact</a>
+              <a className="block hover:text-blue-600" href="/login">Log In</a>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900">Contact Us</h3>
+            <div className="mt-4 space-y-3 text-sm text-slate-500">
+              <a href="mailto:adminpayroll03@gmail.com" className="block hover:text-blue-600">adminpayroll03@gmail.com</a>
+              <p className="text-xs text-slate-400">We'll reply to your inquiry promptly.</p>
+            </div>
+          </div>
         </div>
         <div className="mx-auto mt-10 max-w-[1280px] border-t border-slate-100 pt-6 text-xs text-slate-400">© 2026 PayRoll Pro. All rights reserved.</div>
       </footer>
