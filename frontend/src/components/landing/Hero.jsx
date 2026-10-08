@@ -280,13 +280,6 @@ function Hero() {
         <div className="mx-auto mt-14 grid max-w-[1180px] gap-5 md:grid-cols-2 lg:grid-cols-4">{steps.map(([number, title, text]) => <div key={number} className="relative rounded-2xl border border-slate-200 p-7"><span className="text-sm font-bold text-blue-600">{number}</span><h3 className="mt-7 text-lg font-bold text-slate-900">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-500">{text}</p></div>)}</div>
       </section>
 
-      <section id="pricing" className="scroll-mt-24 bg-slate-50 px-6 py-24 lg:px-12 lg:py-28">
-        <SectionTitle eyebrow="SIMPLE PLANS" title="Choose what fits your team" text="Start simple and move to a plan that matches the way your organization works." />
-        <div className="mx-auto mt-14 grid max-w-[1050px] gap-6 md:grid-cols-3">
-          {[{name:"Starter", desc:"For small teams getting organized.", price:"Free", items:["Employee management","Basic payroll workflow","Standard reports"]},{name:"Professional", desc:"For growing teams that need more control.", price:"Custom", items:["Everything in Starter","Advanced reports","Attendance & documents","Priority support"]},{name:"Business", desc:"For organizations with larger workflows.", price:"Custom", items:["Everything in Professional","Flexible workflows","Enhanced controls","Dedicated support"]}].map((plan, i) => <div key={plan.name} className={`rounded-2xl border bg-white p-8 ${i===1 ? "border-blue-500 shadow-xl shadow-blue-900/10" : "border-slate-200"}`}><div className="flex items-center justify-between"><h3 className="text-xl font-bold">{plan.name}</h3>{i===1 && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">Popular</span>}</div><p className="mt-3 min-h-12 text-sm leading-6 text-slate-500">{plan.desc}</p><p className="mt-7 text-3xl font-bold text-slate-950">{plan.price}</p><a href="/login" className="mt-7 block rounded-xl bg-blue-600 px-5 py-3 text-center text-sm font-bold text-white hover:bg-blue-700">Get Started</a><ul className="mt-7 space-y-3">{plan.items.map(item => <li key={item} className="flex items-center gap-2 text-sm text-slate-600"><Check size={16} className="text-blue-600" />{item}</li>)}</ul></div>)}
-        </div>
-      </section>
-
       <section id="contact" className="scroll-mt-24 bg-white px-6 py-24 lg:px-12 lg:py-28">
         <div className="mx-auto max-w-[1180px] overflow-hidden rounded-[30px] bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white shadow-2xl shadow-blue-900/20 sm:p-12 lg:flex lg:items-center lg:justify-between lg:p-16">
           <div className="max-w-2xl"><p className="text-sm font-semibold text-blue-100">READY TO SIMPLIFY PAYROLL?</p><h2 className="mt-3 text-3xl font-bold sm:text-4xl">Bring your payroll workflow into one place.</h2><p className="mt-4 text-base leading-7 text-blue-100">Start with a clean, modern payroll experience built around your team.</p></div>
@@ -297,7 +290,6 @@ function Hero() {
       <footer className="border-t border-slate-200 bg-white px-6 py-12 lg:px-12">
         <div className="mx-auto grid max-w-[1280px] gap-10 md:grid-cols-4">
           <div className="md:col-span-2"><div className="flex items-center gap-3"><LogoMark /><span className="text-xl font-bold">PayRoll <span className="text-blue-600">Pro</span></span></div><p className="mt-4 max-w-md text-sm leading-6 text-slate-500">Smart payroll management for modern teams. Simple workflows, organized records and clear reporting.</p></div>
-          <div><h3 className="font-bold text-slate-900">Product</h3><div className="mt-4 space-y-3 text-sm text-slate-500"><a className="block hover:text-blue-600" href="#features">Features</a><a className="block hover:text-blue-600" href="#solutions">Solutions</a><a className="block hover:text-blue-600" href="#pricing">Pricing</a></div></div>
           <div><h3 className="font-bold text-slate-900">Company</h3><div className="mt-4 space-y-3 text-sm text-slate-500"><a className="block hover:text-blue-600" href="#about">About</a><a className="block hover:text-blue-600" href="#contact">Contact</a><a className="block hover:text-blue-600" href="/login">Log In</a></div></div>
         </div>
         <div className="mx-auto mt-10 max-w-[1280px] border-t border-slate-100 pt-6 text-xs text-slate-400">© 2026 PayRoll Pro. All rights reserved.</div>
